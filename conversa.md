@@ -1,8 +1,8 @@
 # 📋 Conversa - Migração de CRUD MySQL para PostgreSQL com Sequelize
 
-**Data**: 29 de junho de 2026  
+**Data**: 10 de agosto de 2026  
 **Projeto**: Sistema de Vendas Online - Carvão Vegetal Dois Irmãos  
-**Desenvolvedor**: GitHub Copilot CLI (versão 1.0.65, modelo: claude-haiku-4.5)
+**Desenvolvedor**: Rikelme
 
 ---
 
@@ -37,25 +37,31 @@ O usuário solicitou:
 
 O projeto existente estava estruturado com:
 
-### Arquivos Encontrados:
+### Arquivos Encontrados (estado atual do repositório):
 ```
-/config/db.js                      → mysql2 com callbacks
-/models/userModel.js               → Modelo com callbacks
-/models/produtoModel.js            → Modelo com callbacks
-/models/categoriaModel.js          → Modelo com callbacks
-/controllers/produtoController.js  → Controller com callbacks
-/controllers/userController.js     → Controller com callbacks
-/controllers/vendaController.js    → Controller com callbacks
-/routes/produtoRoutes.js           → Rotas Express
-/package.json                      → Dependências MySQL
-/.env                              → Variáveis de ambiente MySQL
+/config/db.js                      → PostgreSQL com Sequelize
+/models/index.js                   → Central de modelos e associações
+/models/clienteModel.js            → Modelo Sequelize
+/models/produtoSequelizeModel.js   → Modelo Sequelize
+/models/pedidoModel.js             → Modelo Sequelize
+/models/itemPedidoModel.js         → Modelo Sequelize
+/models/userModel.js               → Modelo legado (não-ORM)
+/models/produtoModel.js            → Modelo legado (não-ORM)
+/models/categoriaModel.js          → Modelo legado (não-ORM)
+/controllers/clienteSequelizeController.js → Controller Sequelize
+/controllers/produtoSequelizeController.js → Controller Sequelize
+/controllers/pedidoController.js   → Controller Sequelize
+/controllers/produtoController.js  → Controller legado
+/routes/clienteRoutes.js           → Rotas Sequelize
+/routes/produtoSequelizeRoutes.js  → Rotas Sequelize
+/routes/pedidoRoutes.js            → Rotas Sequelize
+/package.json                      → Dependências atualizadas (pg, sequelize)
+/.env                              → Variáveis de ambiente para PostgreSQL
 ```
 
-### Stack Original:
-- **Database**: MySQL com `mysql2`
-- **Pattern**: Callbacks para operações async
-- **ORM**: Raw SQL com callbacks
-- **Arquitetura**: MVC com models como objetos com métodos
+### Stack
+- **Estado inicial**: MySQL com `mysql2` e callbacks
+- **Estado atual**: PostgreSQL com `sequelize`, async/await e controllers baseados em models Sequelize
 
 ---
 
@@ -725,6 +731,6 @@ node seeds/seedDatabase.js
 
 ---
 
-*Documento gerado em: 29 de junho de 2026*  
-*Projeto: Silva548/TCC*  
-*Desenvolvedor: GitHub Copilot CLI v1.0.65*
+*Documento atualizado em: 10 de agosto de 2026*  
+*Projeto: Rikelme/TCC*  
+*Desenvolvedor: Rikelme*
