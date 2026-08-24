@@ -5,14 +5,20 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "migrate": "sequelize db:migrate",
+    "migrate:undo": "sequelize db:migrate:undo",
+    "migrate:status": "sequelize db:migrate:status",
+    "seed": "node seeds/seedDatabase.js",
+    "test": "node --test tests/*.test.js",
+    "lint": "eslint ."
   },
   "keywords": [],
   "author": "Joédio Borges Júnior",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "body-parser": "^1.20.2",
+    "connect-pg-simple": "^10.0.0",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
@@ -29,6 +35,9 @@
     "uuid": "^11.1.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.9.0",
+    "nodemon": "^3.1.4",
+    "sequelize-cli": "^6.6.5"
   }
 }

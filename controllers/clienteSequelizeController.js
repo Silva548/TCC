@@ -1,6 +1,7 @@
 const Cliente = require('../models/clienteModel');
 const bcrypt = require('bcryptjs');
 const { Op } = require('sequelize');
+const { parsePaginacao, metadados } = require('../utils/paginacao');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TIPOS_VALIDOS = ['B2C', 'B2B'];
@@ -74,12 +75,18 @@ const clienteController = {
 
     getAllClientes: async (req, res, next) => {
         try {
-            const clientes = await Cliente.findAll({
+            const pag = parsePaginacao(req.query);
+            const { rows: clientes, count } = await Cliente.findAndCountAll({
                 order: [['nome', 'ASC']],
                 attributes: { exclude: ['senha'] },
+                limit: pag.limite,
+                offset: pag.offset,
             });
 
-            res.render('clientes/index', { clientes });
+            res.render('clientes/index', {
+                clientes,
+                paginacao: metadados(pag, count),
+            });
         } catch (err) {
             next(err);
         }

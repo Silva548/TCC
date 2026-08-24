@@ -1,5 +1,10 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const User = require('../models/userModel');
+
+// Hash dummy: garante tempo de resposta constante mesmo quando o usuário não existe,
+// impedindo enumeração de usuários por análise de tempo
+const HASH_DUMMY = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
 
 const authController = {
     renderLoginForm: (req, res) => {
@@ -7,9 +12,15 @@ const authController = {
             return res.redirect('/');
         }
 
+        // Token CSRF gerado sob demanda (só quando o formulário é exibido),
+        // evitando criar sessão em toda visita anônima
+        if (!req.session.csrfToken) {
+            req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+        }
+
         const erro = req.session.flashError || null;
         delete req.session.flashError;
-        res.render('login', { erro });
+        res.render('login', { erro, csrfToken: req.session.csrfToken });
     },
 
     login: async (req, res, next) => {
@@ -22,7 +33,7 @@ const authController = {
             }
 
             const user = await User.findOne({ where: { username } });
-            const senhaValida = user && await bcrypt.compare(password, user.password);
+            const senhaValida = await bcrypt.compare(password, (user && user.password) || HASH_DUMMY);
 
             if (!senhaValida) {
                 req.session.flashError = 'Usuário ou senha inválidos';

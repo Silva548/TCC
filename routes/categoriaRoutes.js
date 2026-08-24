@@ -1,6 +1,8 @@
 const express = require('express');
 const categoriaController = require('../controllers/categoriaController');
+const { validarIdParam } = require('../middleware/validate');
 const router = express.Router();
+router.param('id', validarIdParam);
 
 router.get('/', categoriaController.getAllCategorias);
 router.get('/new', categoriaController.renderCreateForm);

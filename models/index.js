@@ -1,4 +1,5 @@
-// models/index.js - Sincroniza todos os modelos e associações
+// models/index.js - Carrega todos os modelos e define as associações.
+// O schema é gerenciado por migrations (npm run migrate), NÃO por sync().
 
 const sequelize = require('../config/db');
 const Cliente = require('./clienteModel');
@@ -18,16 +19,6 @@ ItemPedido.belongsTo(Pedido, { foreignKey: 'pedido_id' });
 Produto.hasMany(ItemPedido, { foreignKey: 'produto_id' });
 ItemPedido.belongsTo(Produto, { foreignKey: 'produto_id' });
 
-// Função para sincronizar o banco de dados
-const syncDatabase = async (force = false) => {
-    try {
-        await sequelize.sync({ force });
-        console.log('Database synced successfully');
-    } catch (err) {
-        console.error('Error syncing database:', err);
-    }
-};
-
 module.exports = {
     sequelize,
     Cliente,
@@ -36,5 +27,4 @@ module.exports = {
     ItemPedido,
     User,
     Categoria,
-    syncDatabase,
 };

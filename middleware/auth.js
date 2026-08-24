@@ -11,4 +11,15 @@ const requireAuth = (req, res, next) => {
     return res.redirect('/login');
 };
 
-module.exports = { requireAuth };
+const requireRole = (role) => (req, res, next) => {
+    if (!req.session || req.session.role !== role) {
+        const message = 'Acesso restrito a administradores';
+        if (req.accepts(['html', 'json']) === 'json') {
+            return res.status(403).json({ error: message });
+        }
+        return res.status(403).send(message);
+    }
+    next();
+};
+
+module.exports = { requireAuth, requireRole };

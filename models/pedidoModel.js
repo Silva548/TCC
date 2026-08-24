@@ -48,7 +48,6 @@ const Pedido = sequelize.define('Pedido', {
     timestamps: true,
 });
 
-Pedido.belongsTo(Cliente, { foreignKey: 'cliente_id' });
-Cliente.hasMany(Pedido, { foreignKey: 'cliente_id' });
+// Associações são definidas centralizadamente em models/index.js
 
 module.exports = Pedido;

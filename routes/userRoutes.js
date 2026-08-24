@@ -1,9 +1,11 @@
 const express = require('express');
 const userController = require('../controllers/userController');
+const { validarIdParam } = require('../middleware/validate');
 const router = express.Router();
+router.param('id', validarIdParam);
 
 router.get('/', userController.getAllUsers);
-router.get('/search', userController.searchUsers); // Adicione esta rota
+router.get('/search', userController.searchUsers);
 router.get('/new', userController.renderCreateForm);
 router.post('/', userController.createUser);
 router.get('/:id', userController.getUserById);

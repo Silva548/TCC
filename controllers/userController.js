@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/userModel');
+const { parsePaginacao, metadados } = require('../utils/paginacao');
 
 const ROLES_VALIDOS = ['admin', 'user'];
 
@@ -36,12 +37,18 @@ const userController = {
 
     getAllUsers: async (req, res, next) => {
         try {
-            const users = await User.findAll({
+            const pag = parsePaginacao(req.query);
+            const { rows: users, count } = await User.findAndCountAll({
                 order: [['username', 'ASC']],
                 attributes: { exclude: ['password'] },
+                limit: pag.limite,
+                offset: pag.offset,
             });
 
-            res.render('users/index', { users });
+            res.render('users/index', {
+                users,
+                paginacao: metadados(pag, count),
+            });
         } catch (err) {
             next(err);
         }

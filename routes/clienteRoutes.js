@@ -1,6 +1,8 @@
 const express = require('express');
 const clienteController = require('../controllers/clienteSequelizeController');
+const { validarIdParam } = require('../middleware/validate');
 const router = express.Router();
+router.param('id', validarIdParam);
 
 router.get('/', clienteController.getAllClientes);
 router.get('/new', clienteController.renderCreateForm);

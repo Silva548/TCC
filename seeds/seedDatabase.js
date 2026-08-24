@@ -1,28 +1,38 @@
 // seeds/seedDatabase.js - Seed com dados de teste
 
 const bcrypt = require('bcryptjs');
-const { Cliente, Produto, Pedido, ItemPedido, User, Categoria, sequelize } = require('../models/index');
+const crypto = require('crypto');
+const { Cliente, Produto, Pedido, ItemPedido, User, Categoria } = require('../models/index');
 
 const seedDatabase = async () => {
     try {
+        // Em produção a senha do admin é gerada aleatoriamente e exibida UMA vez;
+        // nunca usar credencial fixa conhecida
+        const senhaAdmin = process.env.NODE_ENV === 'production'
+            ? crypto.randomBytes(12).toString('hex')
+            : 'admin123';
+
         // Criar usuário admin padrão
-        const [admin, adminCriado] = await User.findOrCreate({
+        const [, adminCriado] = await User.findOrCreate({
             where: { username: 'admin' },
             defaults: {
                 username: 'admin',
-                password: await bcrypt.hash('admin123', 10),
+                password: await bcrypt.hash(senhaAdmin, 10),
                 role: 'admin',
             },
         });
 
         if (adminCriado) {
-            console.log('✓ Usuário admin criado (login: admin / senha: admin123)');
+            console.log(`✓ Usuário admin criado (login: admin / senha: ${senhaAdmin})`);
+            if (process.env.NODE_ENV === 'production') {
+                console.log('⚠️  Guarde esta senha agora — ela não será exibida novamente.');
+            }
         } else {
             console.log('✓ Usuário admin já existe');
         }
 
         // Criar categorias de teste
-        const categorias = await Categoria.bulkCreate([
+        await Categoria.bulkCreate([
             { nome: 'Carvão Vegetal' },
             { nome: 'Lenha' },
             { nome: 'Acessórios' },
@@ -137,12 +147,16 @@ const seedDatabase = async () => {
 
 // Executar seed
 if (require.main === module) {
-    const { syncDatabase } = require('../models/index');
-    
-    syncDatabase(false).then(() => {
-        seedDatabase().then(() => {
-            process.exit(0);
-        });
+    const { sequelize } = require('../models/index');
+
+    sequelize.authenticate().then(() => {
+        console.log('⚠️  Aplique as migrations antes (npm run migrate) se o banco estiver vazio.');
+        return seedDatabase();
+    }).then(() => {
+        process.exit(0);
+    }).catch((err) => {
+        console.error('Falha na conexão com o banco:', err.message);
+        process.exit(1);
     });
 }
 

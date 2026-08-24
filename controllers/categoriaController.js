@@ -1,4 +1,5 @@
 const Categoria = require('../models/categoriaModel');
+const { parsePaginacao, metadados } = require('../utils/paginacao');
 
 const categoriaController = {
     renderCreateForm: (req, res) => {
@@ -25,11 +26,17 @@ const categoriaController = {
 
     getAllCategorias: async (req, res, next) => {
         try {
-            const categorias = await Categoria.findAll({
+            const pag = parsePaginacao(req.query);
+            const { rows: categorias, count } = await Categoria.findAndCountAll({
                 order: [['nome', 'ASC']],
+                limit: pag.limite,
+                offset: pag.offset,
             });
 
-            res.render('categorias/index', { categorias });
+            res.render('categorias/index', {
+                categorias,
+                paginacao: metadados(pag, count),
+            });
         } catch (err) {
             next(err);
         }

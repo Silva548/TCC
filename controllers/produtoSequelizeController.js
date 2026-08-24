@@ -1,4 +1,5 @@
 const Produto = require('../models/produtoSequelizeModel');
+const { parsePaginacao, metadados } = require('../utils/paginacao');
 
 const validarProduto = (body) => {
     const nome = (body.nome || '').trim();
@@ -54,11 +55,17 @@ const produtoController = {
 
     getAllProdutos: async (req, res, next) => {
         try {
-            const produtos = await Produto.findAll({
+            const pag = parsePaginacao(req.query);
+            const { rows: produtos, count } = await Produto.findAndCountAll({
                 order: [['nome', 'ASC']],
+                limit: pag.limite,
+                offset: pag.offset,
             });
 
-            res.render('produtos/index', { produtos });
+            res.render('produtos/index', {
+                produtos,
+                paginacao: metadados(pag, count),
+            });
         } catch (err) {
             next(err);
         }

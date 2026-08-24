@@ -1,6 +1,8 @@
 const express = require('express');
 const pedidoController = require('../controllers/pedidoController');
+const { validarIdParam } = require('../middleware/validate');
 const router = express.Router();
+router.param('id', validarIdParam);
 
 router.post('/', pedidoController.createPedido);
 router.get('/', pedidoController.getAllPedidos);

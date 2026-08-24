@@ -51,9 +51,6 @@ const ItemPedido = sequelize.define('ItemPedido', {
     timestamps: true,
 });
 
-ItemPedido.belongsTo(Pedido, { foreignKey: 'pedido_id' });
-ItemPedido.belongsTo(Produto, { foreignKey: 'produto_id' });
-Pedido.hasMany(ItemPedido, { foreignKey: 'pedido_id' });
-Produto.hasMany(ItemPedido, { foreignKey: 'produto_id' });
+// Associações são definidas centralizadamente em models/index.js
 
 module.exports = ItemPedido;
