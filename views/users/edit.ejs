@@ -1,18 +1,24 @@
 <h1>Editar usuário</h1>
+
+<% if (erro) { %>
+    <div class="alert alert-danger"><%= erro %></div>
+<% } %>
+
 <form action="/users/<%= user.id %>?_method=PUT" method="POST">
+    <%- include('../partials/csrf') %>
     <div class="form-group">
-        <label for="username">Username</label>
-        <input type="text" class="form-control" id="username" name="username" value="<%= user.username %>" required>
+        <label for="username">Usuário</label>
+        <input type="text" class="form-control" id="username" name="username" value="<%= user.username || '' %>" required autocomplete="off">
     </div>
     <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" class="form-control" id="password" name="password" value="<%= user.password %>" required>
+        <label for="password">Nova senha (deixe em branco para manter a atual)</label>
+        <input type="password" class="form-control" id="password" name="password" minlength="6" autocomplete="new-password">
     </div>
     <div class="form-group">
-        <label for="role">Role</label>
-        <select class="form-control" id="role" name="role" required>
-            <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Admin</option>
+        <label for="role">Perfil</label>
+        <select class="form-control" id="role" name="role">
             <option value="user" <%= user.role === 'user' ? 'selected' : '' %>>User</option>
+            <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Admin</option>
         </select>
     </div>
     <button type="submit" class="btn btn-warning">Salvar</button>

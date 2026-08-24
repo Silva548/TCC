@@ -1,98 +1,157 @@
+const bcrypt = require('bcryptjs');
 const User = require('../models/userModel');
 
+const ROLES_VALIDOS = ['admin', 'user'];
+
 const userController = {
-    createUser: (req, res) => {
-        const newUser = {
-            username: req.body.username,
-            password: req.body.password,
-            role: req.body.role,
-        };
-
-        User.create(newUser, (err, userId) => {
-            if (err) {
-                return res.status(500).json({ error: err });
-            }
-            res.redirect('/users');
-        });
-    },
-
-    getUserById: (req, res) => {
-        const userId = req.params.id;
-
-        User.findById(userId, (err, user) => {
-            if (err) {
-                return res.status(500).json({ error: err });
-            }
-            if (!user) {
-                return res.status(404).json({ message: 'User not found' });
-            }
-            res.render('users/show', { user });
-        });
-    },
-
-    getAllUsers: (req, res) => {
-        User.getAll((err, users) => {
-            if (err) {
-                return res.status(500).json({ error: err });
-            }
-            res.render('users/index', { users });
-        });
-    },
-
     renderCreateForm: (req, res) => {
-        res.render('users/create');
+        res.render('users/create', { erro: null });
     },
 
-    renderEditForm: (req, res) => {
-        const userId = req.params.id;
+    createUser: async (req, res, next) => {
+        try {
+            const { username, password, role } = req.body;
 
-        User.findById(userId, (err, user) => {
-            if (err) {
-                return res.status(500).json({ error: err });
+            if (!username || !username.trim() || !password) {
+                return res.status(400).render('users/create', { erro: 'Usuário e senha são obrigatórios' });
             }
+            if (password.length < 6) {
+                return res.status(400).render('users/create', { erro: 'A senha deve ter no mínimo 6 caracteres' });
+            }
+
+            await User.create({
+                username: username.trim(),
+                password: await bcrypt.hash(password, 10),
+                role: ROLES_VALIDOS.includes(role) ? role : 'user',
+            });
+
+            res.redirect('/users');
+        } catch (err) {
+            if (err.name === 'SequelizeUniqueConstraintError') {
+                return res.status(400).render('users/create', { erro: 'Nome de usuário já cadastrado' });
+            }
+            next(err);
+        }
+    },
+
+    getAllUsers: async (req, res, next) => {
+        try {
+            const users = await User.findAll({
+                order: [['username', 'ASC']],
+                attributes: { exclude: ['password'] },
+            });
+
+            res.render('users/index', { users });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    getUserById: async (req, res, next) => {
+        try {
+            const user = await User.findByPk(req.params.id, {
+                attributes: { exclude: ['password'] },
+            });
+
             if (!user) {
-                return res.status(404).json({ message: 'User not found' });
+                return res.status(404).render('404');
             }
-            res.render('users/edit', { user });
-        });
+
+            res.render('users/show', { user });
+        } catch (err) {
+            next(err);
+        }
     },
 
-    updateUser: (req, res) => {
-        const userId = req.params.id;
-        const updatedUser = {
-            username: req.body.username,
-            password: req.body.password,
-            role: req.body.role,
-        };
+    renderEditForm: async (req, res, next) => {
+        try {
+            const user = await User.findByPk(req.params.id, {
+                attributes: { exclude: ['password'] },
+            });
 
-        User.update(userId, updatedUser, (err) => {
-            if (err) {
-                return res.status(500).json({ error: err });
+            if (!user) {
+                return res.status(404).render('404');
             }
+
+            res.render('users/edit', { user, erro: null });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    updateUser: async (req, res, next) => {
+        try {
+            const userId = req.params.id;
+            const user = await User.findByPk(userId);
+
+            if (!user) {
+                return res.status(404).render('404');
+            }
+
+            const { username, password, role } = req.body;
+
+            if (!username || !username.trim()) {
+                return res.status(400).render('users/edit', { user, erro: 'O nome de usuário é obrigatório' });
+            }
+
+            const dados = {
+                username: username.trim(),
+                role: ROLES_VALIDOS.includes(role) ? role : user.role,
+            };
+
+            // Só altera a senha se uma nova for informada
+            if (password && password.trim() !== '') {
+                if (password.length < 6) {
+                    return res.status(400).render('users/edit', { user, erro: 'A nova senha deve ter no mínimo 6 caracteres' });
+                }
+                dados.password = await bcrypt.hash(password, 10);
+            }
+
+            await user.update(dados);
             res.redirect('/users');
-        });
+        } catch (err) {
+            if (err.name === 'SequelizeUniqueConstraintError') {
+                return res.status(400).render('users/edit', { user: { id: req.params.id }, erro: 'Nome de usuário já cadastrado' });
+            }
+            next(err);
+        }
     },
 
-    deleteUser: (req, res) => {
-        const userId = req.params.id;
-
-        User.delete(userId, (err) => {
-            if (err) {
-                return res.status(500).json({ error: err });
+    deleteUser: async (req, res, next) => {
+        try {
+            // Impede que o usuário logado exclua a própria conta
+            if (String(req.session.userId) === String(req.params.id)) {
+                return res.status(400).send('Você não pode excluir sua própria conta enquanto está autenticado');
             }
+
+            const user = await User.findByPk(req.params.id);
+            if (user) {
+                await user.destroy();
+            }
+
             res.redirect('/users');
-        });
+        } catch (err) {
+            next(err);
+        }
     },
 
-    searchUsers: (req, res) => {
-        const search = req.query.search || '';
+    searchUsers: async (req, res, next) => {
+        try {
+            const search = (req.query.search || '').replace(/[%_\\]/g, '');
 
-        User.searchByName(search, (err, users) => {
-            if (err) {
-                return res.status(500).json({ error: err });
-            }
+            const users = await User.findAll({
+                where: {
+                    username: {
+                        [require('sequelize').Op.like]: `%${search}%`,
+                    },
+                },
+                attributes: { exclude: ['password'] },
+            });
+
             res.json({ users });
-        });
+        } catch (err) {
+            next(err);
+        }
     },
 };
 

@@ -5,6 +5,8 @@ const Cliente = require('./clienteModel');
 const Produto = require('./produtoSequelizeModel');
 const Pedido = require('./pedidoModel');
 const ItemPedido = require('./itemPedidoModel');
+const User = require('./userModel');
+const Categoria = require('./categoriaModel');
 
 // Define associações
 Cliente.hasMany(Pedido, { foreignKey: 'cliente_id', onDelete: 'CASCADE' });
@@ -32,5 +34,7 @@ module.exports = {
     Produto,
     Pedido,
     ItemPedido,
+    User,
+    Categoria,
     syncDatabase,
 };

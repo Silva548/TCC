@@ -1,18 +1,24 @@
 <h1>Cadastrar novo usuário</h1>
+
+<% if (erro) { %>
+    <div class="alert alert-danger"><%= erro %></div>
+<% } %>
+
 <form action="/users" method="POST">
+    <%- include('../partials/csrf') %>
     <div class="form-group">
-        <label for="username">Nome</label>
-        <input type="text" class="form-control" id="username" name="username" required>
+        <label for="username">Usuário</label>
+        <input type="text" class="form-control" id="username" name="username" required autocomplete="off">
     </div>
     <div class="form-group">
-        <label for="password">Senha</label>
-        <input type="password" class="form-control" id="password" name="password" required>
+        <label for="password">Senha (mínimo 6 caracteres)</label>
+        <input type="password" class="form-control" id="password" name="password" minlength="6" required autocomplete="new-password">
     </div>
     <div class="form-group">
-        <label for="role">Regra</label>
-        <select class="form-control" id="role" name="role" required>
-            <option value="admin">Admin</option>
+        <label for="role">Perfil</label>
+        <select class="form-control" id="role" name="role">
             <option value="user">User</option>
+            <option value="admin">Admin</option>
         </select>
     </div>
     <button type="submit" class="btn btn-primary">Cadastrar</button>
