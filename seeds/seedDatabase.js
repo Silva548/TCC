@@ -1,10 +1,35 @@
 // seeds/seedDatabase.js - Seed com dados de teste
 
-const bcrypt = require('bcrypt');
-const { Cliente, Produto, Pedido, ItemPedido, sequelize } = require('../models/index');
+const bcrypt = require('bcryptjs');
+const { Cliente, Produto, Pedido, ItemPedido, User, Categoria, sequelize } = require('../models/index');
 
 const seedDatabase = async () => {
     try {
+        // Criar usuário admin padrão
+        const [admin, adminCriado] = await User.findOrCreate({
+            where: { username: 'admin' },
+            defaults: {
+                username: 'admin',
+                password: await bcrypt.hash('admin123', 10),
+                role: 'admin',
+            },
+        });
+
+        if (adminCriado) {
+            console.log('✓ Usuário admin criado (login: admin / senha: admin123)');
+        } else {
+            console.log('✓ Usuário admin já existe');
+        }
+
+        // Criar categorias de teste
+        const categorias = await Categoria.bulkCreate([
+            { nome: 'Carvão Vegetal' },
+            { nome: 'Lenha' },
+            { nome: 'Acessórios' },
+        ], { ignoreDuplicates: true });
+
+        console.log('✓ Categorias criadas');
+
         // Criar clientes de teste
         const clientes = await Cliente.bulkCreate([
             {

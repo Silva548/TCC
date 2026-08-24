@@ -1,0 +1,9 @@
+<h1>Detalhes do cliente</h1>
+<p>ID: <%= cliente.id %></p>
+<p>Nome: <%= cliente.nome %></p>
+<p>E-mail: <%= cliente.email %></p>
+<p>Documento: <%= cliente.documento %></p>
+<p>Telefone: <%= cliente.telefone || '-' %></p>
+<p>Tipo: <%= cliente.tipo %></p>
+<a href="/clientes/<%= cliente.id %>/edit" class="btn btn-warning">Editar</a>
+<a href="/clientes" class="btn btn-primary">Voltar</a>

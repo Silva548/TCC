@@ -1,5 +1,11 @@
 <h1>Cadastrar categoria</h1>
+
+<% if (erro) { %>
+    <div class="alert alert-danger"><%= erro %></div>
+<% } %>
+
 <form action="/categorias" method="POST">
+    <%- include('../partials/csrf') %>
     <div class="form-group">
         <label for="nome">Nome da categoria</label>
         <input type="text" class="form-control" id="nome" name="nome" required>

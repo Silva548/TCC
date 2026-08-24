@@ -1,39 +1,58 @@
 const Produto = require('../models/produtoSequelizeModel');
 
+const validarProduto = (body) => {
+    const nome = (body.nome || '').trim();
+    const preco = parseFloat(body.preco);
+    const peso_kg = parseFloat(body.peso_kg);
+    const estoque = body.estoque === undefined || body.estoque === '' ? 0 : Number(body.estoque);
+
+    if (!nome) return { erro: 'O nome do produto é obrigatório' };
+    if (isNaN(preco) || preco <= 0) return { erro: 'O preço deve ser um número maior que zero' };
+    if (isNaN(peso_kg) || peso_kg <= 0) return { erro: 'O peso (kg) deve ser um número maior que zero' };
+    if (!Number.isInteger(estoque) || estoque < 0) return { erro: 'O estoque deve ser um número inteiro maior ou igual a zero' };
+
+    return {
+        dados: {
+            nome,
+            descricao: (body.descricao || '').trim() || null,
+            preco,
+            peso_kg,
+            estoque,
+        },
+    };
+};
+
 const produtoController = {
 
-    createProduto: async (req, res) => {
+    createProduto: async (req, res, next) => {
         try {
-            const newProduto = {
-                nome: req.body.nome,
-                descricao: req.body.descricao,
-                preco: req.body.preco,
-                peso_kg: req.body.peso_kg,
-                estoque: req.body.estoque || 0,
-            };
+            const { dados, erro } = validarProduto(req.body);
+            if (erro) {
+                return res.status(400).render('produtos/create', { erro });
+            }
 
-            await Produto.create(newProduto);
+            await Produto.create(dados);
             res.redirect('/produtos');
         } catch (err) {
-            return res.status(500).json({ error: err.message });
+            next(err);
         }
     },
 
-    getProdutoById: async (req, res) => {
+    getProdutoById: async (req, res, next) => {
         try {
-            const produtoId = req.params.id;
+            const produto = await Produto.findByPk(req.params.id);
 
-            const produto = await Produto.findByPk(produtoId);
             if (!produto) {
-                return res.status(404).json({ message: 'Produto não encontrado' });
+                return res.status(404).render('404');
             }
+
             res.render('produtos/show', { produto });
         } catch (err) {
-            return res.status(500).json({ error: err.message });
+            next(err);
         }
     },
 
-    getAllProdutos: async (req, res) => {
+    getAllProdutos: async (req, res, next) => {
         try {
             const produtos = await Produto.findAll({
                 order: [['nome', 'ASC']],
@@ -41,74 +60,66 @@ const produtoController = {
 
             res.render('produtos/index', { produtos });
         } catch (err) {
-            return res.status(500).json({ error: err.message });
+            next(err);
         }
     },
 
     renderCreateForm: (req, res) => {
-        res.render('produtos/create');
+        res.render('produtos/create', { erro: null });
     },
 
-    renderEditForm: async (req, res) => {
+    renderEditForm: async (req, res, next) => {
         try {
-            const produtoId = req.params.id;
+            const produto = await Produto.findByPk(req.params.id);
 
-            const produto = await Produto.findByPk(produtoId);
             if (!produto) {
-                return res.status(404).json({ message: 'Produto não encontrado' });
+                return res.status(404).render('404');
             }
 
-            res.render('produtos/edit', { produto });
+            res.render('produtos/edit', { produto, erro: null });
         } catch (err) {
-            return res.status(500).json({ error: err.message });
+            next(err);
         }
     },
 
-    updateProduto: async (req, res) => {
+    updateProduto: async (req, res, next) => {
         try {
-            const produtoId = req.params.id;
+            const produto = await Produto.findByPk(req.params.id);
 
-            const produto = await Produto.findByPk(produtoId);
             if (!produto) {
-                return res.status(404).json({ message: 'Produto não encontrado' });
+                return res.status(404).render('404');
             }
 
-            // Validação: impedir que o estoque fique negativo
-            const novoEstoque = parseInt(req.body.estoque);
-            if (novoEstoque < 0) {
-                return res.status(400).json({ 
-                    error: 'O estoque não pode ser negativo' 
-                });
+            const { dados, erro } = validarProduto(req.body);
+            if (erro) {
+                return res.status(400).render('produtos/edit', { produto, erro });
             }
 
-            const updatedProduto = {
-                nome: req.body.nome,
-                descricao: req.body.descricao,
-                preco: req.body.preco,
-                peso_kg: req.body.peso_kg,
-                estoque: novoEstoque,
-            };
-
-            await produto.update(updatedProduto);
+            await produto.update(dados);
             res.redirect('/produtos');
         } catch (err) {
-            return res.status(500).json({ error: err.message });
+            next(err);
         }
     },
 
-    deleteProduto: async (req, res) => {
+    deleteProduto: async (req, res, next) => {
         try {
-            const produtoId = req.params.id;
-
-            const produto = await Produto.findByPk(produtoId);
-            if (!produto) {
-                return res.status(404).json({ message: 'Produto não encontrado' });
+            const produto = await Produto.findByPk(req.params.id);
+            if (produto) {
+                try {
+                    await produto.destroy();
+                } catch (err) {
+                    // FK RESTRICT: produto com histórico de pedidos não pode ser excluído
+                    if (err.name && err.name.includes('ForeignKeyConstraintError')) {
+                        return res.status(400).send('Não é possível excluir um produto que possui pedidos registrados');
+                    }
+                    throw err;
+                }
             }
 
-            await produto.destroy();
             res.redirect('/produtos');
         } catch (err) {
-            return res.status(500).json({ error: err.message });
+            next(err);
         }
     },
 };

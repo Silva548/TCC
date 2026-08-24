@@ -51,3 +51,19 @@ CREATE INDEX idx_itens_pedidos_pedido_id ON itens_pedidos(pedido_id);
 CREATE INDEX idx_itens_pedidos_produto_id ON itens_pedidos(produto_id);
 CREATE INDEX idx_clientes_email ON clientes(email);
 CREATE INDEX idx_clientes_documento ON clientes(documento);
+
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(10) NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS categorias (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(255) UNIQUE NOT NULL,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

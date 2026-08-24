@@ -1,8 +1,9 @@
-<h1>produto Details</h1>
+<h1>Detalhes do produto</h1>
 <p>ID: <%= produto.id %></p>
 <p>Nome: <%= produto.nome %></p>
-<p>Descrição: <%= produto.descricao %></p>
-<p>Preço: <%= produto.preco %></p>
-<p>Quantidade: <%= produto.quantidade %></p>
-<p>Categoria: <%= produto.categoria_nome %></p>
-<a href="/produtos" class="btn btn-primary">Back to List</a>
+<p>Descrição: <%= produto.descricao || '-' %></p>
+<p>Preço: R$ <%= produto.preco %></p>
+<p>Peso: <%= produto.peso_kg %> kg</p>
+<p>Estoque: <%= produto.estoque %></p>
+<a href="/produtos/<%= produto.id %>/edit" class="btn btn-warning">Editar</a>
+<a href="/produtos" class="btn btn-primary">Voltar</a>

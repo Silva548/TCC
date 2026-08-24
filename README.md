@@ -1,74 +1,75 @@
-# User Management System
+# Sistema de Vendas — Carvão Dois Irmãos
 
-Este é um sistema de gerenciamento de usuários desenvolvido com Node.js, Express e MySQL. Ele permite a criação, leitura, atualização e exclusão (CRUD) de usuários, com uma interface web para administradores e usuários.
+Sistema de gerenciamento de clientes, produtos, categorias e pedidos desenvolvido com Node.js, Express e PostgreSQL (Sequelize ORM).
 
 ## Funcionalidades
 
-- Cadastro e login de usuários
-- Listagem de usuários
-- Criação, edição e exclusão de usuários
-- Diferenciação entre administradores e usuários comuns
+- Autenticação com sessão (login/logout) e senhas com hash bcrypt
+- CRUD de clientes, produtos e categorias (interface web)
+- API JSON de pedidos com transações e baixa automática de estoque
+- Relatório de vendas por período
+- Proteção CSRF, headers de segurança (helmet) e rate limiting
 
 ## Tecnologias Utilizadas
 
 - **Node.js**: Ambiente de execução para JavaScript no lado do servidor.
-- **Express**: Framework para construção de aplicativos web com Node.js.
-- **MySQL**: Sistema de gerenciamento de banco de dados relacional.
+- **Express**: Framework para construção de aplicativos web.
+- **PostgreSQL + Sequelize**: Banco de dados relacional e ORM.
 - **EJS**: Motor de visualização para renderizar páginas HTML.
 - **Bootstrap**: Framework CSS para estilização das páginas.
 
 ## Instalação
 
-### 1. Fork e Clone este Repositório
+### 1. Clone este Repositório
 
 ### 2. Instale as Dependências
 
-Certifique-se de que você tem o Node.js e o MySQL instalados. Em seguida, execute o comando para instalar as dependências do projeto:
+```bash
+npm install
+```
 
 ### 3. Configure o Banco de Dados
 
-Crie um banco de dados no MySQL, por exemplo, user_management.
+Crie um banco PostgreSQL (por exemplo, `carvao_dois_irmaos`), copie o arquivo `.env` de exemplo e ajuste as credenciais:
 
-### 4. Execute o Aplicativo
+```
+DB_HOST="localhost"
+DB_USER="postgres"
+DB_PASSWORD="sua_senha"
+DB_NAME="carvao_dois_irmaos"
+DB_PORT="5432"
+NODE_ENV="development"
+SESSION_SECRET="gere-um-segredo-aleatorio"
+```
 
-Inicie o servidor com o comando:
+As tabelas podem ser criadas com `database_postgres.sql` ou automaticamente pelo `sequelize.sync()` ao iniciar.
 
-node app.js
+### 4. Popule o banco e execute
+
+```bash
+node seeds/seedDatabase.js   # cria dados de teste + usuário admin
+npm start                    # ou: node app.js
+```
 
 O servidor estará disponível em http://localhost:3000.
 
+**Acesso padrão criado pelo seed:** usuário `admin`, senha `admin123` (altere após o primeiro login).
+
 ## Estrutura do Projeto
 
-/CRUD
-│
-├── /views
-│   ├── /partials
-│   │   └── navbar.ejs
-│   ├── layout.ejs
-│   ├── create.ejs
-│   ├── edit.ejs
-│   ├── index.ejs
-│   ├── show.ejs
-│
-├── /controllers
-│   └── userController.js
-│
-├── /models
-│   └── userModel.js
-│
-├── /routes
-│   └── userRoutes.js
-│
-├── /config
-│   └── database.js
-│
-├── app.js
-├── package.json
-└── README.md
+```
+/TCC
+├── /config        # Conexão com o banco (Sequelize)
+├── /controllers   # Regras das rotas (auth, clientes, produtos, etc.)
+├── /middleware    # requireAuth e proteção CSRF
+├── /models        # Modelos Sequelize
+├── /routes        # Definição das rotas
+├── /seeds         # Popular banco com dados de teste
+├── /views         # Templates EJS
+├── app.js         # Aplicação principal
+└── package.json
+```
 
-Contribuição
+## Licença
 
-Sinta-se à vontade para contribuir com melhorias ou correções. Abra uma issue ou envie um pull request para colaborar com o projeto.
-Licença
-
-Este projeto é licenciado sob a MIT License.
+Este projeto é licenciado sob a ISC License.

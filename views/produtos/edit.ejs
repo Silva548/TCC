@@ -1,28 +1,30 @@
 <h1>Editar produto</h1>
 
+<% if (erro) { %>
+    <div class="alert alert-danger"><%= erro %></div>
+<% } %>
+
 <form action="/produtos/<%= produto.id %>?_method=PUT" method="POST">
+    <%- include('../partials/csrf') %>
     <div class="form-group">
         <label for="nome">Nome</label>
-        <input type="text" class="form-control" id="nome" name="nome" value="<%= produto.nome %>" required>
+        <input type="text" class="form-control" id="nome" name="nome" value="<%= produto.nome || '' %>" required>
     </div>
     <div class="form-group">
         <label for="descricao">Descrição</label>
-        <input type="text" class="form-control" id="descricao" name="descricao" value="<%= produto.descricao %>" required>
+        <textarea id="descricao" class="form-control" name="descricao"><%= produto.descricao || '' %></textarea>
     </div>
     <div class="form-group">
-        <label for="preco">Preço</label>
-        <input type="number" class="form-control" id="preco" name="preco" value="<%= produto.preco %>" required>
+        <label for="preco">Preço (R$)</label>
+        <input type="number" step="0.01" min="0.01" class="form-control" id="preco" name="preco" value="<%= produto.preco %>" required>
     </div>
     <div class="form-group">
-        <label for="quantidade">Quantidade</label>
-        <input type="number" class="form-control" id="quantidade" name="quantidade" value="<%= produto.quantidade %>" required>
+        <label for="peso_kg">Peso (kg)</label>
+        <input type="number" step="0.01" min="0.01" class="form-control" id="peso_kg" name="peso_kg" value="<%= produto.peso_kg %>" required>
     </div>
     <div class="form-group">
-        <label for="categoria_id">Categoria</label>
-        <select class="form-control" id="categoria" name="categoria" required>
-            <% categorias.forEach(function(categoria) { %>
-                <option value="<%= categoria.id %>" <%= produto.categoria == categoria.id ? 'selected' : '' %>><%= categoria.nome %></option>
-            <% }); %>
-        </select>
+        <label for="estoque">Estoque</label>
+        <input type="number" min="0" step="1" class="form-control" id="estoque" name="estoque" value="<%= produto.estoque %>" required>
     </div>
     <button type="submit" class="btn btn-warning">Salvar</button>
+</form>

@@ -1,84 +1,104 @@
 const Categoria = require('../models/categoriaModel');
 
 const categoriaController = {
-    createCategoria: (req, res) => {
-        const newCategoria = {
-            nome: req.body.nome
-        };
-
-        Categoria.create(newCategoria, (err, categoriaId) => {
-            if (err) {
-                return res.status(500).json({ error: err });
-            }
-            res.redirect('/categorias');
-        });
-    },
-
-    getCategoriaById: (req, res) => {
-        const categoriaId = req.params.id;
-
-        Categoria.findById(categoriaId, (err, categoria) => {
-            if (err) {
-                return res.status(500).json({ error: err });
-            }
-            if (!categoria) {
-                return res.status(404).json({ message: 'Categoria not found' });
-            }
-            res.render('categorias/show', { categoria });
-        });
-    },
-
-    getAllCategorias: (req, res) => {
-        Categoria.getAll((err, categorias) => {
-            if (err) {
-                return res.status(500).json({ error: err });
-            }
-            res.render('categorias/index', { categorias });
-        });
-    },
-
     renderCreateForm: (req, res) => {
-        res.render('categorias/create');
+        res.render('categorias/create', { erro: null });
     },
 
-    renderEditForm: (req, res) => {
-        const categoriaId = req.params.id;
+    createCategoria: async (req, res, next) => {
+        try {
+            const nome = (req.body.nome || '').trim();
 
-        Categoria.findById(categoriaId, (err, categoria) => {
-            if (err) {
-                return res.status(500).json({ error: err });
+            if (!nome) {
+                return res.status(400).render('categorias/create', { erro: 'O nome da categoria é obrigatório' });
             }
+
+            await Categoria.create({ nome });
+            res.redirect('/categorias');
+        } catch (err) {
+            if (err.name === 'SequelizeUniqueConstraintError') {
+                return res.status(400).render('categorias/create', { erro: 'Já existe uma categoria com esse nome' });
+            }
+            next(err);
+        }
+    },
+
+    getAllCategorias: async (req, res, next) => {
+        try {
+            const categorias = await Categoria.findAll({
+                order: [['nome', 'ASC']],
+            });
+
+            res.render('categorias/index', { categorias });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    getCategoriaById: async (req, res, next) => {
+        try {
+            const categoria = await Categoria.findByPk(req.params.id);
+
             if (!categoria) {
-                return res.status(404).json({ message: 'Categoria not found' });
+                return res.status(404).render('404');
             }
-            res.render('categorias/edit', { categoria });
-        });
+
+            res.render('categorias/show', { categoria });
+        } catch (err) {
+            next(err);
+        }
     },
 
-    updateCategoria: (req, res) => {
-        const categoriaId = req.params.id;
-        const updatedCategoria = {
-            nome: req.body.nome
-        };
+    renderEditForm: async (req, res, next) => {
+        try {
+            const categoria = await Categoria.findByPk(req.params.id);
 
-        Categoria.update(categoriaId, updatedCategoria, (err) => {
-            if (err) {
-                return res.status(500).json({ error: err });
+            if (!categoria) {
+                return res.status(404).render('404');
             }
-            res.redirect('/categorias');
-        });
+
+            res.render('categorias/edit', { categoria, erro: null });
+        } catch (err) {
+            next(err);
+        }
     },
 
-    deleteCategoria: (req, res) => {
-        const categoriaId = req.params.id;
+    updateCategoria: async (req, res, next) => {
+        try {
+            const categoria = await Categoria.findByPk(req.params.id);
 
-        Categoria.delete(categoriaId, (err) => {
-            if (err) {
-                return res.status(500).json({ error: err });
+            if (!categoria) {
+                return res.status(404).render('404');
             }
+
+            const nome = (req.body.nome || '').trim();
+
+            if (!nome) {
+                return res.status(400).render('categorias/edit', { categoria, erro: 'O nome da categoria é obrigatório' });
+            }
+
+            await categoria.update({ nome });
             res.redirect('/categorias');
-        });
-    }
+        } catch (err) {
+            if (err.name === 'SequelizeUniqueConstraintError') {
+                return res.status(400).render('categorias/edit', { categoria: { id: req.params.id }, erro: 'Já existe uma categoria com esse nome' });
+            }
+            next(err);
+        }
+    },
+
+    deleteCategoria: async (req, res, next) => {
+        try {
+            const categoria = await Categoria.findByPk(req.params.id);
+            if (categoria) {
+                await categoria.destroy();
+            }
+
+            res.redirect('/categorias');
+        } catch (err) {
+            next(err);
+        }
+    },
 };
 
 module.exports = categoriaController;
