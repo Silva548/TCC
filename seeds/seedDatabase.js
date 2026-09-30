@@ -65,11 +65,16 @@ const PRODUTOS = [
 ];
 
 const seedDatabase = async () => {
-    // Em produção a senha do admin é gerada aleatoriamente e exibida UMA vez;
-    // nunca usar credencial fixa conhecida
-    const senhaAdmin = process.env.NODE_ENV === 'production'
+    // Em produção a senha do admin nunca é fixa: usa ADMIN_SENHA se o operador
+    // tiver definido, e gerada aleatória caso contrário (exibida UMA vez).
+    const senhaDeAmbiente = process.env.ADMIN_SENHA;
+    const senhaAdmin = senhaDeAmbiente || (process.env.NODE_ENV === 'production'
         ? crypto.randomBytes(12).toString('hex')
-        : 'admin123';
+        : 'admin123');
+
+    if (senhaDeAmbiente && process.env.NODE_ENV === 'production' && senhaDeAmbiente === 'admin123') {
+        console.warn('⚠️  ADMIN_SENHA está com a senha padrão conhecida; troque antes de publicar.');
+    }
 
         // Criar usuário admin padrão
         const [, adminCriado] = await User.findOrCreate({

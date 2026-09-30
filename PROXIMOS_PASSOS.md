@@ -86,8 +86,9 @@ está no código e coberto por teste.
   status, excluir) deixou de estar no controller e passou a ser uma única
   implementação usada pela API e pela web — a duplicação já tinha custado um
   bug de estoque.
-- **Testes**: 126 no total, incluindo a UI de pedidos, o contrato
-  HTML/JSON no mesmo path e as recusas de exclusão por FK.
+- **Testes**: 133 no total, incluindo a UI de pedidos, o contrato
+  HTML/JSON no mesmo path, as recusas de exclusão por FK e a guarda de
+  credencial padrão.
 
 ## Correção de 30/09/2026 — recusa de exclusão por FK
 
@@ -112,6 +113,23 @@ inexistente, que era onde a tela mais precisava da mensagem.
   os dois agora devolve a mesma mensagem em vez de 500.
 - Coberto por 6 testes de `dbErros` e 5 de integração, incluindo um que injeta
   `<script>` na query para confirmar que a mensagem é escapada.
+
+
+## Correção de 30/09/2026 — admin com senha padrão não sobe em produção
+
+O seed já sorteava a senha do admin em produção, mas isso não cobre o caminho
+que mais leva a uma credencial previsível: criar o banco em desenvolvimento
+(onde a senha é `admin123`), exportar um dump e promover para produção. O seed é
+idempotente, então ele não roda de novo — o admin já existe e a senha padrão
+entra no ar sem aviso.
+
+- `utils/credenciais.js` compara a senha do admin contra a lista de senhas
+  padrão conhecidas com `bcrypt.compare` (não dá para ler o hash de volta).
+- `server.js` recusa subir em produção quando a confere, com `exit 1` e a
+  orientação de troca. Verificado no boot real: com `admin123` o processo
+  termina antes de abrir listener; com a senha trocada, sobe normalmente.
+- `ADMIN_SENHA` passou a ser respeitada pelo seed, para o operador escolher a
+  senha em vez de depender do log de uma vez.
 
 
 ## Fora do escopo (decisões consciente)

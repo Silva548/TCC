@@ -1463,3 +1463,48 @@ test('produto com categoria_id inexistente devolve o formulário com erro, não 
     assert.match(html, /categoria informada não existe/i);
     assert.doesNotMatch(html, /Erro interno/, 'não pode cair na página de 500');
 });
+
+test('a guarda de produção reconhece um admin com senha padrão', async (t) => {
+    if (pular()) return t.skip('banco de testes indisponível');
+
+    // Mesmo caminho do startup de produção, contra um admin real: o teste do
+    // módulo puro não prova que o bcrypt.compare acha o hash do banco.
+    const { User } = require('../models');
+    const bcrypt = require('bcryptjs');
+    const { usaSenhaPadraoConhecida } = require('../utils/credenciais');
+
+    const alvo = await User.create({
+        username: `guarda_${Date.now()}`,
+        password: await bcrypt.hash('admin123', 4),
+        role: 'admin',
+    });
+
+    try {
+        const recarregado = await User.findByPk(alvo.id);
+        assert.equal(await usaSenhaPadraoConhecida(recarregado), true,
+            'o startup de produção deveria recusar subir com esta senha');
+    } finally {
+        await alvo.destroy();
+    }
+});
+
+test('a guarda de produção não acusa admin com senha trocada', async (t) => {
+    if (pular()) return t.skip('banco de testes indisponível');
+
+    const { User } = require('../models');
+    const bcrypt = require('bcryptjs');
+    const { usaSenhaPadraoConhecida } = require('../utils/credenciais');
+
+    const alvo = await User.create({
+        username: `guarda_ok_${Date.now()}`,
+        password: await bcrypt.hash('senha-que-nao-e-a-padrao-123', 4),
+        role: 'admin',
+    });
+
+    try {
+        const recarregado = await User.findByPk(alvo.id);
+        assert.equal(await usaSenhaPadraoConhecida(recarregado), false);
+    } finally {
+        await alvo.destroy();
+    }
+});
