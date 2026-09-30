@@ -24,7 +24,7 @@ está no código e coberto por teste.
 - [x] ESLint configurado e limpo (`npm run lint`) — inclui os globais do runtime
       Node usados pelos testes
 - [x] `lint:views` valida a sintaxe de todos os templates (`ejslint views`)
-- [x] `npm test` roda a suíte unitária **e** a de integração (113 testes)
+- [x] `npm test` roda a suíte unitária **e** a de integração (136 testes)
 - [x] Banco de teste isolado (`DB_NAME_TEST`), preparado pelo `pretest` e
       recusado se for igual ao banco de desenvolvimento
 - [x] Suíte de integração sem dependência nova: sobe o app real e fala HTTP
@@ -44,7 +44,7 @@ está no código e coberto por teste.
 - [x] SRI nos recursos de CDN e CSP restrita a uma única origem
 - [x] Erros 500 carregam o `requestId` na tela e no JSON, e o log do servidor
       guarda a stack completa
-- [ ] Fazer push dos commits locais para `origin/main`
+- [x] Fazer push dos commits locais para `origin/main`
 
 ## 5. Deploy 🟢
 
@@ -53,6 +53,18 @@ está no código e coberto por teste.
       `DATABASE_URL` com `sslmode=require`, `TRUST_PROXY` se houver proxy)
 - [ ] Rodar `npm run migrate` no pipeline de deploy (nunca `sync()`)
 - [ ] Trocar a senha `admin123` do seed em qualquer ambiente que não seja local
+
+## Fase 6 — Documentação, lint e verificação final ✅
+
+- [x] `README.md` atualizado: instalação, variáveis de `.env`, tabela de rotas
+      (HTML x JSON) e nota sobre o `database_postgres.sql`
+- [x] `database_postgres.sql` regenerado do banco migrado, com aviso de que é
+      instantâneo do schema, não a fonte da verdade (a fonte são as migrations)
+- [x] `PROXIMOS_PASSOS.md` atualizado a cada rodada
+- [x] `ejs-lint` instalado e `npm run lint:views` validando todos os templates
+- [x] Verificação final concluída: 136 testes verdes, `npm run lint` e
+      `npm run lint:views` limpos, 10 migrations aplicadas e o fluxo ponta a
+      ponta executado no servidor real (detalhes na seção "Verificação final")
 
 ## Mudanças da segunda auditoria (30/09/2026)
 
