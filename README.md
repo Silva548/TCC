@@ -64,7 +64,7 @@ O schema vem das **migrations**; o app não usa mais `sequelize.sync()`:
 createdb carvao_dois_irmaos
 npm run migrate     # cria o schema
 npm run seed        # dados de teste + usuário admin
-npm start           # ou: node app.js
+npm start           # ou: node server.js
 ```
 
 O servidor estará disponível em http://localhost:3000.
@@ -96,7 +96,7 @@ de validar o estoque.
 ```bash
 npm test          # suíte unitária + integração (precisa de PostgreSQL)
 npm run lint      # ESLint
-npm run lint:views# sintaxe dos templates EJS
+npm run lint:views  # sintaxe dos templates EJS
 ```
 
 A suíte de integração sobe o app de verdade em uma porta efêmera e fala HTTP
