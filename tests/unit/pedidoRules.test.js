@@ -6,6 +6,7 @@ const {
     transicaoValida,
     paraCentavos,
     calcularTotalCentavos,
+    mediaEmCentavos,
 } = require('../../utils/pedidoRules');
 
 test('status válidos cobrem todas as chaves das transições', () => {
@@ -78,4 +79,30 @@ test('calcularTotalCentavos soma a mesma linha repetida', () => {
 
 test('pedido vazio totaliza zero', () => {
     assert.equal(calcularTotalCentavos([], new Map()), 0);
+});
+
+// ---------------------------------------------------------------------------
+// mediaEmCentavos
+// ---------------------------------------------------------------------------
+
+test('a média por pedido não devolve ruído de float', () => {
+    // 310 / 7 é 44.285714285714285 em ponto flutuante; num campo de dinheiro,
+    // esses 17 dígitos viram lixo na tela.
+    assert.equal(mediaEmCentavos(310, 7), 44.29);
+    assert.equal(String(mediaEmCentavos(310, 7)).length <= 5, true);
+});
+
+test('a média arredonda para duas casas, com o valor exato preservado', () => {
+    assert.equal(mediaEmCentavos(100, 4), 25);
+    assert.equal(mediaEmCentavos(10, 3), 3.33);
+    assert.equal(mediaEmCentavos(10, 6), 1.67);
+    assert.equal(mediaEmCentavos(0, 5), 0);
+});
+
+test('a média não quebra com quantidade zero, negativa ou lixo', () => {
+    assert.equal(mediaEmCentavos(310, 0), 0);
+    assert.equal(mediaEmCentavos(310, -2), 0);
+    assert.equal(mediaEmCentavos(NaN, 5), 0);
+    assert.equal(mediaEmCentavos(310, 'abc'), 0);
+    assert.equal(mediaEmCentavos(undefined, undefined), 0);
 });

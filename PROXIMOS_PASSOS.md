@@ -12,7 +12,7 @@ está no código e coberto por teste.
 - [x] **Aplicar schema:** `npm run migrate` (o app NÃO usa mais `sequelize.sync()`)
 - [x] Popular dados: `npm run seed`
 - [x] Iniciar: `npm start` → http://localhost:3000
-- [ ] Testar o fluxo completo a olho: login → CRUDs → pedidos (HTML) → relatório → logout
+- [x] Testar o fluxo completo a olho: login → CRUDs → pedidos (HTML) → relatório → logout
 
 > ⚠️ Se o banco `carvao_dois_irmaos` já existia com tabelas criadas pelo antigo
 > `sync()`, as migrations conflitarão ("relation already exists"). Para ambiente
@@ -86,7 +86,7 @@ está no código e coberto por teste.
   status, excluir) deixou de estar no controller e passou a ser uma única
   implementação usada pela API e pela web — a duplicação já tinha custado um
   bug de estoque.
-- **Testes**: 133 no total, incluindo a UI de pedidos, o contrato
+- **Testes**: 136 no total, incluindo a UI de pedidos, o contrato
   HTML/JSON no mesmo path, as recusas de exclusão por FK e a guarda de
   credencial padrão.
 
@@ -113,6 +113,27 @@ inexistente, que era onde a tela mais precisava da mensagem.
   os dois agora devolve a mesma mensagem em vez de 500.
 - Coberto por 6 testes de `dbErros` e 5 de integração, incluindo um que injeta
   `<script>` na query para confirmar que a mensagem é escapada.
+
+
+## Verificação final (30/09/2026)
+
+Fluxo ponta a ponta executado contra o servidor real, na ordem em que uma
+pessoa usaria, com cookie jar e token CSRF por sessão:
+
+- login → home → cliente (criar, editar, listar) → categoria → produto (criar,
+  editar) → pedido (formulário de 6 linhas, criação com 1 item) → detalhe →
+  troca de status válida → transição inválida recusada (400) → relatório JSON →
+  cliente com pedido bloqueado (FK, volta à lista com o aviso) → exclusões em
+  cascata → logout (sessão encerrada).
+
+O estoque baixou de 12 para 10 ao criar o pedido de 2 unidades, confirmado na
+tela do produto. O banco de desenvolvimento voltou ao estado do seed (2 pedidos,
+3 clientes, 4 produtos, 3 categorias, 2 usuários).
+
+Achado desta rodada: `resumo.valor_medio` no relatório vinha como
+`44.285714285714285`, sem arredondamento, num campo de dinheiro. Passou a usar
+`mediaEmCentavos` (em `utils/pedidoRules.js`), que arredonda para duas casas
+depois da divisão.
 
 
 ## Correção de 30/09/2026 — admin com senha padrão não sobe em produção

@@ -18,6 +18,18 @@ const transicaoValida = (atual, novo) =>
 // Trabalha em centavos (inteiros) para evitar erros de arredondamento binário
 const paraCentavos = (valorDecimal) => Math.round(parseFloat(valorDecimal) * 100);
 
+// Média por pedido raramente fecha em centavos: 310 / 7 dá
+// 44.285714285714285, e um campo de dinheiro com 17 dígitos significativos vira
+// lixo na tela e no JSON consumido por outro sistema. Arredonda na fronteira,
+// depois da divisão — arredondar antes mudaria o resultado.
+const mediaEmCentavos = (total, quantidade) => {
+    const n = Number(quantidade);
+    if (!Number.isFinite(Number(total)) || !Number.isFinite(n) || n <= 0) {
+        return 0;
+    }
+    return Math.round((Number(total) / n) * 100) / 100;
+};
+
 // itens:   [{ produto_id, quantidade }]
 // produtos: Map<produto_id, { preco }>
 //
@@ -37,5 +49,6 @@ module.exports = {
     TRANSICOES_STATUS,
     transicaoValida,
     paraCentavos,
+    mediaEmCentavos,
     calcularTotalCentavos,
 };

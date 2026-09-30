@@ -5,6 +5,7 @@ const { Pedido, ItemPedido, Cliente } = require('../models');
 const { Op, fn, col } = require('sequelize');
 const { periodoRelatorio } = require('../utils/periodo');
 const { parsePaginacao, metadados } = require('../utils/paginacao');
+const { mediaEmCentavos } = require('../utils/pedidoRules');
 const {
     falha,
     criarPedido,
@@ -161,7 +162,7 @@ const pedidoController = {
                 resumo: {
                     total_vendas: totalVendas,
                     total_pedidos: totalPedidos,
-                    valor_medio: totalPedidos > 0 ? totalVendas / totalPedidos : 0,
+                    valor_medio: mediaEmCentavos(totalVendas, totalPedidos),
                 },
                 paginacao: metadados(pag, totalPedidos),
                 pedidos,
