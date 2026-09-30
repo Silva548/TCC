@@ -3,7 +3,10 @@ const assert = require('node:assert');
 const {
     STATUS_VALIDOS,
     TRANSICOES_STATUS,
+    TIPOS_ENTREGA,
     transicaoValida,
+    modalidadeValida,
+    precoDaModalidade,
     paraCentavos,
     calcularTotalCentavos,
     mediaEmCentavos,
@@ -46,11 +49,32 @@ test('calcularTotalCentavos soma quantidade x preço sem perda de precisão', ()
     ];
     // Indexado por produto_id, não por posição
     const produtos = new Map([
-        [1, { preco: '19.99' }], // 3 x 1999 = 5997
-        [2, { preco: '0.1' }],   // 2 x   10 =   20
+        [1, { preco_entrega: '19.99', preco_retirada: '17.00' }], // 3 x 1999 = 5997
+        [2, { preco_entrega: '0.1', preco_retirada: '0.05' }],     // 2 x   10 =   20
     ]);
 
     assert.equal(calcularTotalCentavos(itens, produtos), 6017);
+});
+
+test('calcularTotalCentavos usa o preço da modalidade do pedido', () => {
+    const itens = [{ produto_id: 1, quantidade: 2 }];
+    const produtos = new Map([[1, { preco_entrega: '21.00', preco_retirada: '18.00' }]]);
+
+    assert.equal(calcularTotalCentavos(itens, produtos), 4200, 'padrão é entrega');
+    assert.equal(calcularTotalCentavos(itens, produtos, 'entrega'), 4200);
+    assert.equal(calcularTotalCentavos(itens, produtos, 'retirada'), 3600);
+});
+
+test('modalidade desconhecida cai no preço de entrega, sem NaN', () => {
+    const itens = [{ produto_id: 1, quantidade: 1 }];
+    const produtos = new Map([[1, { preco_entrega: '21.00', preco_retirada: '18.00' }]]);
+
+    assert.equal(calcularTotalCentavos(itens, produtos, 'xpto'), 2100);
+    assert.equal(precoDaModalidade(produtos.get(1), 'xpto'), '21.00');
+    assert.equal(modalidadeValida('entrega'), true);
+    assert.equal(modalidadeValida('retirada'), true);
+    assert.equal(modalidadeValida('xpto'), false);
+    assert.deepEqual(TIPOS_ENTREGA, ['entrega', 'retirada']);
 });
 
 test('calcularTotalCentavos não confunde itens quando a ordem dos produtos difere', () => {
@@ -62,8 +86,8 @@ test('calcularTotalCentavos não confunde itens quando a ordem dos produtos dife
         { produto_id: 9, quantidade: 5 },
     ];
     const produtos = new Map([
-        [9, { preco: '10.00' }],
-        [7, { preco: '3.00' }],
+        [9, { preco_entrega: '10.00' }],
+        [7, { preco_entrega: '3.00' }],
     ]);
 
     // 2 x 300 + 5 x 1000 = 5600
@@ -72,7 +96,7 @@ test('calcularTotalCentavos não confunde itens quando a ordem dos produtos dife
 
 test('calcularTotalCentavos soma a mesma linha repetida', () => {
     const itens = [{ produto_id: 1, quantidade: 10 }];
-    const produtos = new Map([[1, { preco: '2.50' }]]);
+    const produtos = new Map([[1, { preco_entrega: '2.50' }]]);
 
     assert.equal(calcularTotalCentavos(itens, produtos), 2500);
 });

@@ -4,22 +4,35 @@ const { excedeTexto, excedeDecimal } = require('../utils/limites');
 const { redirecionarComErro, erroDaUrl } = require('../utils/responder');
 const { ehViolacaoDeChaveEstrangeira } = require('../utils/dbErros');
 
+// Linhas de embalagem e pesos oferecidos nos filtros da listagem. São listas
+// fechadas: qualquer valor fora delas é recusado com 400, em vez de virar um
+// WHERE que não casa com nada.
+const EMBALAGENS = ['premium', 'basica'];
+const PESOS_DISPONIVEIS = [5, 3];
+
 const validarProduto = (body) => {
     const nome = (body.nome || '').trim();
-    const preco = parseFloat(body.preco);
+    const preco_entrega = parseFloat(body.preco_entrega);
+    const preco_retirada = parseFloat(body.preco_retirada);
+    const embalagem = (body.embalagem || '').trim();
     const peso_kg = parseFloat(body.peso_kg);
     const estoque = body.estoque === undefined || body.estoque === '' ? 0 : Number(body.estoque);
     const categoriaRaw = (body.categoria_id || '').trim();
 
-    const limite = excedeTexto('produto', 'nome', nome);
+    const limite = excedeTexto('produto', 'nome', nome) || excedeTexto('produto', 'embalagem', embalagem);
     if (limite) return { erro: limite };
 
     if (!nome) return { erro: 'O nome do produto é obrigatório' };
-    if (isNaN(preco) || preco <= 0) return { erro: 'O preço deve ser um número maior que zero' };
+    if (isNaN(preco_entrega) || preco_entrega <= 0) return { erro: 'O preço de entrega deve ser um número maior que zero' };
+    if (isNaN(preco_retirada) || preco_retirada <= 0) return { erro: 'O preço de retirada deve ser um número maior que zero' };
+    if (!EMBALAGENS.includes(embalagem)) return { erro: 'A embalagem deve ser premium ou basica' };
     if (isNaN(peso_kg) || peso_kg <= 0) return { erro: 'O peso (kg) deve ser um número maior que zero' };
     if (!Number.isInteger(estoque) || estoque < 0) return { erro: 'O estoque deve ser um número inteiro maior ou igual a zero' };
 
-    const limiteDecimal = excedeDecimal('preco', preco) || excedeDecimal('peso_kg', peso_kg);
+    const limiteDecimal =
+        excedeDecimal('preco_entrega', preco_entrega) ||
+        excedeDecimal('preco_retirada', preco_retirada) ||
+        excedeDecimal('peso_kg', peso_kg);
     if (limiteDecimal) return { erro: limiteDecimal };
 
     // Categoria é opcional; string vazia significa "Sem categoria"
@@ -35,7 +48,9 @@ const validarProduto = (body) => {
         dados: {
             nome,
             descricao: (body.descricao || '').trim() || null,
-            preco,
+            preco_entrega,
+            preco_retirada,
+            embalagem,
             peso_kg,
             estoque,
             categoria_id,
@@ -101,6 +116,23 @@ const produtoController = {
                 where.categoria_id = categoria_id;
             }
 
+            // Filtro por linha de embalagem (premium/basica)
+            if (req.query.embalagem) {
+                if (!EMBALAGENS.includes(req.query.embalagem)) {
+                    throw Object.assign(new Error('Embalagem inválida'), { status: 400 });
+                }
+                where.embalagem = req.query.embalagem;
+            }
+
+            // Filtro por peso (5kg ou 3kg)
+            if (req.query.peso_kg) {
+                const peso = Number(req.query.peso_kg);
+                if (!Number.isFinite(peso) || peso <= 0) {
+                    throw Object.assign(new Error('Peso inválido'), { status: 400 });
+                }
+                where.peso_kg = peso;
+            }
+
             const { rows: produtos, count } = await Produto.findAndCountAll({
                 where,
                 include: [{ model: Categoria, as: 'Categoria', attributes: ['id', 'nome'] }],
@@ -111,11 +143,23 @@ const produtoController = {
 
             const categorias = await listarCategorias();
 
+            // Preserva os filtros ativos ao trocar de página.
+            const params = new URLSearchParams();
+            if (req.query.categoria_id) params.set('categoria_id', req.query.categoria_id);
+            if (req.query.embalagem) params.set('embalagem', req.query.embalagem);
+            if (req.query.peso_kg) params.set('peso_kg', req.query.peso_kg);
+            const queryExtra = params.toString() ? `&${params.toString()}` : '';
+
             res.render('produtos/index', {
                 produtos,
                 categorias,
+                embalagens: EMBALAGENS,
+                pesosDisponiveis: PESOS_DISPONIVEIS,
                 categoriaFiltro: req.query.categoria_id || '',
+                embalagemFiltro: req.query.embalagem || '',
+                pesoFiltro: req.query.peso_kg || '',
                 paginacao: metadados(pag, count),
+                queryExtra,
                 erro: erroDaUrl(req),
             });
         } catch (err) {

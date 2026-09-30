@@ -15,8 +15,22 @@
         <textarea id="descricao" class="form-control" name="descricao"><%= body && body.descricao !== undefined ? body.descricao : (produto.descricao || '') %></textarea>
     </div>
     <div class="form-group">
-        <label for="preco">Preço (R$)</label>
-        <input type="number" step="0.01" min="0.01" class="form-control" id="preco" name="preco" value="<%= body && body.preco ? body.preco : produto.preco %>" required>
+        <label for="embalagem">Embalagem</label>
+        <% const embalagemAtual = body && body.embalagem !== undefined ? String(body.embalagem) : String(produto.embalagem || ''); %>
+        <select class="form-control" id="embalagem" name="embalagem" required>
+            <option value="premium" <%= embalagemAtual === 'premium' ? 'selected' : '' %>>Premium</option>
+            <option value="basica" <%= embalagemAtual === 'basica' ? 'selected' : '' %>>Básica</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <div class="form-group col-md-6">
+            <label for="preco_entrega">Preço de entrega (R$)</label>
+            <input type="number" step="0.01" min="0.01" class="form-control" id="preco_entrega" name="preco_entrega" value="<%= body && body.preco_entrega ? body.preco_entrega : produto.preco_entrega %>" required>
+        </div>
+        <div class="form-group col-md-6">
+            <label for="preco_retirada">Preço de retirada (R$)</label>
+            <input type="number" step="0.01" min="0.01" class="form-control" id="preco_retirada" name="preco_retirada" value="<%= body && body.preco_retirada ? body.preco_retirada : produto.preco_retirada %>" required>
+        </div>
     </div>
     <div class="form-group">
         <label for="peso_kg">Peso (kg)</label>

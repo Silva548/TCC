@@ -439,7 +439,10 @@ test('produtos carregam a categoria associada', async (t) => {
     if (pular()) return t.skip('banco de testes indisponível');
 
     const categoria = await Categoria.findOne();
-    await Produto.create({ nome: 'Carvão 5kg', preco: 25.5, peso_kg: 5, estoque: 10, categoria_id: categoria.id });
+    await Produto.create({
+        nome: 'Carvão 5kg', preco_entrega: 25.5, preco_retirada: 22, embalagem: 'premium',
+        peso_kg: 5, estoque: 10, categoria_id: categoria.id,
+    });
 
     const cliente = criarCliente(baseUrl);
     await fazerLogin(cliente);
@@ -557,7 +560,8 @@ test('CHECK de estoque impede valor negativo no banco', async (t) => {
     if (pular()) return t.skip('banco de testes indisponível');
 
     const produto = await Produto.create({
-        nome: 'Produto Para Check', preco: 10, peso_kg: 1, estoque: 0,
+        nome: 'Produto Para Check', preco_entrega: 10, preco_retirada: 9, embalagem: 'basica',
+        peso_kg: 1, estoque: 0,
     });
 
     // finally: se a rejeição não vier, a linha fica com estoque negativo e
@@ -586,7 +590,8 @@ test('mesmo produto em duas linhas soma as quantidades contra o estoque', async 
     const csrf = await extrairCsrf(cliente, '/produtos');
 
     const produto = await Produto.create({
-        nome: 'Carvão Teste Agregação', preco: 10, peso_kg: 5, estoque: 8,
+        nome: 'Carvão Teste Agregação', preco_entrega: 10, preco_retirada: 9, embalagem: 'basica',
+        peso_kg: 5, estoque: 8,
     });
     const { Cliente } = require('../models');
     const alvo = await Cliente.create({ nome: 'Cli Agreg', email: `agreg${Date.now()}@t.com`, documento: String(Date.now()).slice(-11) });
@@ -625,7 +630,8 @@ test('pedido válido com produto repetido soma e baixa corretamente', async (t) 
     const csrf = await extrairCsrf(cliente, '/produtos');
 
     const produto = await Produto.create({
-        nome: 'Carvão Teste Soma', preco: 10, peso_kg: 5, estoque: 10,
+        nome: 'Carvão Teste Soma', preco_entrega: 10, preco_retirada: 9, embalagem: 'basica',
+        peso_kg: 5, estoque: 10,
     });
     const { Cliente } = require('../models');
     const alvo = await Cliente.create({ nome: 'Cli Soma', email: `soma${Date.now()}@t.com`, documento: String(Date.now()).slice(-11) });
@@ -722,7 +728,7 @@ test('cliente com pedidos não pode ser excluído (RESTRICT no banco)', async (t
     const alvo = await Cliente.create({
         nome: 'Cliente Com Pedido', email: `cped${Date.now()}@t.com`, documento: String(Date.now()).slice(-11),
     });
-    const produto = await Produto.create({ nome: 'P Teste FK', preco: 10, peso_kg: 1, estoque: 5 });
+    const produto = await Produto.create({ nome: 'P Teste FK', preco_entrega: 10, preco_retirada: 9, embalagem: 'basica', peso_kg: 1, estoque: 5 });
 
     const criado = await cliente('/pedidos', {
         method: 'POST',
@@ -777,7 +783,8 @@ const navegador = (p) => ({ ...p, headers: { Accept: 'text/html,application/xhtm
 const cenarioPedido = async (sufixo) => {
     const { Cliente, Produto, Pedido } = require('../models');
     const produto = await Produto.create({
-        nome: `Carvão UI ${sufixo}`, preco: 12.5, peso_kg: 5, estoque: 20,
+        nome: `Carvão UI ${sufixo}`, preco_entrega: 12.5, preco_retirada: 10, embalagem: 'basica',
+        peso_kg: 5, estoque: 20,
     });
     const alvo = await Cliente.create({
         nome: `Cli UI ${sufixo}`,
@@ -1361,7 +1368,8 @@ test('excluir categoria com produtos volta à lista com a mensagem', async (t) =
     const { Categoria, Produto } = require('../models');
     const categoria = await Categoria.create({ nome: `Cat ${Date.now()}` });
     const produto = await Produto.create({
-        nome: `Prod cat ${Date.now()}`, preco: 10, peso_kg: 1, estoque: 5, categoria_id: categoria.id,
+        nome: `Prod cat ${Date.now()}`, preco_entrega: 10, preco_retirada: 9, embalagem: 'basica',
+        peso_kg: 1, estoque: 5, categoria_id: categoria.id,
     });
 
     try {
@@ -1451,7 +1459,9 @@ test('produto com categoria_id inexistente devolve o formulário com erro, não 
         body: [
             ['_csrf', csrf],
             ['nome', 'Produto sem categoria'],
-            ['preco', '10,00'],
+            ['preco_entrega', '10,00'],
+            ['preco_retirada', '9,00'],
+            ['embalagem', 'basica'],
             ['peso_kg', '1'],
             ['estoque', '3'],
             ['categoria_id', '999999'],
@@ -1505,6 +1515,215 @@ test('a guarda de produção não acusa admin com senha trocada', async (t) => {
         const recarregado = await User.findByPk(alvo.id);
         assert.equal(await usaSenhaPadraoConhecida(recarregado), false);
     } finally {
+        await alvo.destroy();
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Catálogo: dois preços, embalagem e filtros por peso/embalagem
+// ---------------------------------------------------------------------------
+
+test('produto novo grava os dois preços e a embalagem', async (t) => {
+    if (pular()) return t.skip('banco de testes indisponível');
+
+    const nav = criarCliente(baseUrl);
+    await fazerLogin(nav);
+    const csrf = await extrairCsrf(nav, '/produtos/new');
+    const nome = `Bolsa Teste ${Date.now()}`;
+    let criado;
+
+    try {
+        const res = await nav('/produtos', navegador({
+            method: 'POST',
+            body: [
+                ['_csrf', csrf],
+                ['nome', nome],
+                ['embalagem', 'premium'],
+                ['preco_entrega', '21,00'],
+                ['preco_retirada', '18,00'],
+                ['peso_kg', '5'],
+                ['estoque', '10'],
+            ],
+        }));
+
+        assert.equal(res.status, 302, `esperava redirect, veio ${res.status}`);
+        assert.equal(res.headers.get('location'), '/produtos');
+
+        criado = await Produto.findOne({ where: { nome } });
+        assert.ok(criado, 'o produto deveria ter sido criado');
+        assert.equal(Number(criado.preco_entrega), 21);
+        assert.equal(Number(criado.preco_retirada), 18);
+        assert.equal(criado.embalagem, 'premium');
+    } finally {
+        if (criado) await criado.destroy();
+    }
+});
+
+test('produto com embalagem inválida é recusado com 400, sem gravar', async (t) => {
+    if (pular()) return t.skip('banco de testes indisponível');
+
+    const nav = criarCliente(baseUrl);
+    await fazerLogin(nav);
+    const csrf = await extrairCsrf(nav, '/produtos/new');
+    const nome = `Bolsa Inválida ${Date.now()}`;
+
+    const res = await nav('/produtos', navegador({
+        method: 'POST',
+        body: [
+            ['_csrf', csrf],
+            ['nome', nome],
+            ['embalagem', 'xpto'],
+            ['preco_entrega', '21,00'],
+            ['preco_retirada', '18,00'],
+            ['peso_kg', '5'],
+            ['estoque', '10'],
+        ],
+    }));
+
+    assert.equal(res.status, 400);
+    assert.match(await res.text(), /embalagem deve ser premium ou basica/i);
+    assert.equal(await Produto.count({ where: { nome } }), 0, 'nada pode ter sido gravado');
+});
+
+test('listagem de produtos filtra por peso e embalagem', async (t) => {
+    if (pular()) return t.skip('banco de testes indisponível');
+
+    const suf = Date.now();
+    const p5premium = await Produto.create({
+        nome: `P5P ${suf}`, preco_entrega: 21, preco_retirada: 18, embalagem: 'premium', peso_kg: 5, estoque: 1,
+    });
+    const p3premium = await Produto.create({
+        nome: `P3P ${suf}`, preco_entrega: 13, preco_retirada: 11, embalagem: 'premium', peso_kg: 3, estoque: 1,
+    });
+    const p5basica = await Produto.create({
+        nome: `P5B ${suf}`, preco_entrega: 16, preco_retirada: 15, embalagem: 'basica', peso_kg: 5, estoque: 1,
+    });
+
+    try {
+        const res = await autenticado('/produtos?peso_kg=5&embalagem=premium', navegador({}));
+        assert.equal(res.status, 200);
+
+        const html = await res.text();
+        assert.match(html, new RegExp(`P5P ${suf}`), 'o produto que casa os filtros deve aparecer');
+        assert.doesNotMatch(html, new RegExp(`P3P ${suf}`), 'peso diferente não pode aparecer');
+        assert.doesNotMatch(html, new RegExp(`P5B ${suf}`), 'embalagem diferente não pode aparecer');
+    } finally {
+        await Produto.destroy({ where: { id: [p5premium.id, p3premium.id, p5basica.id] } });
+    }
+});
+
+test('filtro de peso não numérico é recusado com 400', async (t) => {
+    if (pular()) return t.skip('banco de testes indisponível');
+
+    const res = await autenticado('/produtos?peso_kg=abc', navegador({}));
+    assert.equal(res.status, 400);
+});
+
+test('formulário de pedido oferece entrega/retirada e os dois preços', async (t) => {
+    if (pular()) return t.skip('banco de testes indisponível');
+
+    const produto = await Produto.create({
+        nome: `Bolsa Form ${Date.now()}`, preco_entrega: 21, preco_retirada: 18, embalagem: 'premium', peso_kg: 5, estoque: 5,
+    });
+
+    try {
+        const res = await autenticado('/pedidos/new', navegador({}));
+        assert.equal(res.status, 200);
+
+        const html = await res.text();
+        assert.match(html, /name="tipo_entrega"/);
+        assert.match(html, /value="retirada"/);
+        assert.match(html, new RegExp(produto.nome));
+        assert.match(html, /entrega R\$ 21,00/, 'o preço de entrega deve aparecer na opção');
+        assert.match(html, /retirada R\$ 18,00/, 'o preço de retirada deve aparecer na opção');
+    } finally {
+        await produto.destroy();
+    }
+});
+
+test('pedido de retirada usa o preço de retirada no total', async (t) => {
+    if (pular()) return t.skip('banco de testes indisponível');
+
+    const { Cliente, Pedido, ItemPedido } = require('../models');
+
+    const produto = await Produto.create({
+        nome: `Bolsa Retirada ${Date.now()}`, preco_entrega: 21, preco_retirada: 18, embalagem: 'premium', peso_kg: 5, estoque: 10,
+    });
+    const alvo = await Cliente.create({
+        nome: 'Cli Retirada', email: `ret${Date.now()}@t.com`, documento: String(Date.now()).slice(-11),
+    });
+    let pedidoId;
+
+    try {
+        const nav = criarCliente(baseUrl);
+        await fazerLogin(nav);
+        const csrf = await extrairCsrf(nav, '/pedidos/new');
+
+        const res = await nav('/pedidos', navegador({
+            method: 'POST',
+            body: [
+                ['_csrf', csrf],
+                ['cliente_id', String(alvo.id)],
+                ['forma_pagamento', 'pix'],
+                ['tipo_entrega', 'retirada'],
+                ['item_produto_id[]', String(produto.id)],
+                ['item_quantidade[]', '2'],
+            ],
+        }));
+
+        assert.equal(res.status, 302, `esperava redirect, veio ${res.status}`);
+        pedidoId = Number(res.headers.get('location').match(/\/pedidos\/(\d+)/)[1]);
+
+        const pedido = await Pedido.findByPk(pedidoId, { include: [{ model: ItemPedido }] });
+        assert.equal(pedido.tipo_entrega, 'retirada');
+        assert.equal(Number(pedido.valor_total), 36, '2 x R$ 18,00 de retirada');
+        assert.equal(Number(pedido.ItemPedidos[0].preco_unitario), 18);
+
+        // A modalidade precisa aparecer na página do pedido, não só no banco.
+        const detalhe = await nav(`/pedidos/${pedidoId}`, navegador({}));
+        assert.match(await detalhe.text(), /Retirada na empresa/);
+    } finally {
+        if (pedidoId) await Pedido.destroy({ where: { id: pedidoId } });
+        await produto.destroy();
+        await alvo.destroy();
+    }
+});
+
+test('pedido com tipo_entrega inválido é recusado, sem gravar', async (t) => {
+    if (pular()) return t.skip('banco de testes indisponível');
+
+    const { Cliente, Pedido } = require('../models');
+
+    const produto = await Produto.create({
+        nome: `Bolsa Inválida Pedido ${Date.now()}`, preco_entrega: 21, preco_retirada: 18, embalagem: 'basica', peso_kg: 5, estoque: 10,
+    });
+    const alvo = await Cliente.create({
+        nome: 'Cli Inválido', email: `inv${Date.now()}@t.com`, documento: String(Date.now()).slice(-11),
+    });
+    const antes = await Pedido.count();
+
+    try {
+        const nav = criarCliente(baseUrl);
+        await fazerLogin(nav);
+        const csrf = await extrairCsrf(nav, '/pedidos/new');
+
+        const res = await nav('/pedidos', navegador({
+            method: 'POST',
+            body: [
+                ['_csrf', csrf],
+                ['cliente_id', String(alvo.id)],
+                ['forma_pagamento', 'pix'],
+                ['tipo_entrega', 'xpto'],
+                ['item_produto_id[]', String(produto.id)],
+                ['item_quantidade[]', '1'],
+            ],
+        }));
+
+        assert.equal(res.status, 400);
+        assert.match(await res.text(), /Tipo de entrega inválido/);
+        assert.equal(await Pedido.count(), antes, 'nenhum pedido pode ter sido criado');
+    } finally {
+        await produto.destroy();
         await alvo.destroy();
     }
 });

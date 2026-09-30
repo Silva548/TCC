@@ -35,6 +35,12 @@ const Pedido = sequelize.define('Pedido', {
         type: DataTypes.ENUM('credito', 'debito', 'pix', 'boleto', 'dinheiro'),
         allowNull: false,
     },
+    tipo_entrega: {
+        type: DataTypes.STRING(20),
+        allowNull: false,
+        defaultValue: 'entrega',
+        comment: 'Modalidade do pedido: entrega no endereço ou retirada na empresa',
+    },
     createdAt: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,

@@ -15,9 +15,21 @@ const Produto = sequelize.define('Produto', {
         type: DataTypes.TEXT,
         allowNull: true,
     },
-    preco: {
+    preco_entrega: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
+        comment: 'Preço cobrado quando o pedido é entregue no endereço',
+    },
+    preco_retirada: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        comment: 'Preço cobrado quando o cliente retira na empresa',
+    },
+    embalagem: {
+        type: DataTypes.STRING(20),
+        allowNull: false,
+        defaultValue: 'basica',
+        comment: 'Linha da embalagem: premium ou basica',
     },
     peso_kg: {
         type: DataTypes.DECIMAL(8, 2),

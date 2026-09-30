@@ -35,32 +35,31 @@ const CLIENTES = [
 
 const PRODUTOS = [
     {
-        nome: 'Carvão Vegetal 5kg',
-        descricao: 'Carvão vegetal premium para churrasco. Excelente qualidade.',
-        preco: 45.00,
+        nome: 'Bolsa Carvão 5kg Premium',
+        descricao: 'Bolsa de carvão premium de 5kg. Retirada na empresa ou entrega no endereço desejado.',
+        preco_entrega: 21.00,
+        preco_retirada: 18.00,
+        embalagem: 'premium',
         peso_kg: 5.0,
         estoque: 100,
     },
     {
-        nome: 'Carvão Vegetal 10kg',
-        descricao: 'Carvão vegetal premium em saco de 10kg. Ideal para churrasqueiras.',
-        preco: 85.00,
-        peso_kg: 10.0,
-        estoque: 75,
+        nome: 'Bolsa Carvão 3kg Premium',
+        descricao: 'Bolsa de carvão premium de 3kg. Retirada na empresa ou entrega no endereço desejado.',
+        preco_entrega: 13.00,
+        preco_retirada: 11.00,
+        embalagem: 'premium',
+        peso_kg: 3.0,
+        estoque: 100,
     },
     {
-        nome: 'Carvão Vegetal 20kg',
-        descricao: 'Embalagem grande de carvão vegetal. Melhor custo-benefício.',
-        preco: 160.00,
-        peso_kg: 20.0,
-        estoque: 50,
-    },
-    {
-        nome: 'Carvão Vegetal Premium 2kg',
-        descricao: 'Carvão vegetal premium em pacote pequeno.',
-        preco: 22.00,
-        peso_kg: 2.0,
-        estoque: 200,
+        nome: 'Bolsa Carvão 5kg Básica',
+        descricao: 'Bolsa de carvão de linha básica, 5kg. Retirada na empresa ou entrega no endereço desejado.',
+        preco_entrega: 16.00,
+        preco_retirada: 15.00,
+        embalagem: 'basica',
+        peso_kg: 5.0,
+        estoque: 100,
     },
 ];
 
@@ -142,7 +141,8 @@ const seedDatabase = async () => {
                 cliente_id: clientes[0].id,
                 data: new Date(),
                 status: 'pendente',
-                valor_total: 130.00,
+                tipo_entrega: 'entrega',
+                valor_total: 68.00,
                 forma_pagamento: 'pix',
             });
 
@@ -150,19 +150,19 @@ const seedDatabase = async () => {
                 pedido_id: pedido1.id,
                 produto_id: produtos[0].id,
                 quantidade: 2,
-                preco_unitario: 45.00,
+                preco_unitario: 21.00,
             });
 
             await ItemPedido.create({
                 pedido_id: pedido1.id,
-                produto_id: produtos[3].id,
+                produto_id: produtos[1].id,
                 quantidade: 2,
-                preco_unitario: 22.00,
+                preco_unitario: 13.00,
             });
 
             // Reduzir estoque
             await produtos[0].update({ estoque: produtos[0].estoque - 2 });
-            await produtos[3].update({ estoque: produtos[3].estoque - 2 });
+            await produtos[1].update({ estoque: produtos[1].estoque - 2 });
 
             console.log('✓ Pedidos criados');
         }

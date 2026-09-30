@@ -17,6 +17,7 @@ const LIMITE_STRING = {
     produto: {
         nome: 255,
         categoria: 255,
+        embalagem: 20,
     },
     categoria: {
         nome: 255,
@@ -30,7 +31,8 @@ const LIMITE_STRING = {
 // 99.999.999,99; DECIMAL(8,2), 999.999,99. Acima disso o Postgres responde
 // "numeric field overflow" — outra vez 500 em vez de 400.
 const FAIXA_DECIMAL = {
-    preco: { max: 99999999.99 },
+    preco_entrega: { max: 99999999.99 },
+    preco_retirada: { max: 99999999.99 },
     peso_kg: { max: 999999.99 },
     valor_total: { max: 9999999999.99 },
 };

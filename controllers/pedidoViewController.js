@@ -8,7 +8,7 @@ const { Pedido, ItemPedido, Cliente, Produto } = require('../models');
 const { Op } = require('sequelize');
 // A formatação (moeda, data, rótulo de status) fica em app.locals.formatadores
 // e é usada pelas views; o controller não precisa dela.
-const { STATUS_VALIDOS, FORMAS_PAGAMENTO, TRANSICOES_STATUS } = require('../utils/pedidoRules');
+const { STATUS_VALIDOS, FORMAS_PAGAMENTO, TIPOS_ENTREGA, TRANSICOES_STATUS } = require('../utils/pedidoRules');
 const { parsePaginacao, metadados } = require('../utils/paginacao');
 const { erroDaUrl } = require('../utils/responder');
 const { criarPedido, mudarStatus, excluirPedido, normalizarItens, itensDoFormulario } = require('../services/pedidoService');
@@ -31,11 +31,11 @@ const opcoesDoFormulario = async () => {
         Produto.findAll({
             where: { estoque: { [Op.gt]: 0 } },
             order: [['nome', 'ASC']],
-            attributes: ['id', 'nome', 'preco', 'estoque'],
+            attributes: ['id', 'nome', 'preco_entrega', 'preco_retirada', 'estoque'],
         }),
     ]);
 
-    return { clientes, produtos, formasPagamento: FORMAS_PAGAMENTO, linhasItem: LINHAS_ITEM };
+    return { clientes, produtos, formasPagamento: FORMAS_PAGAMENTO, tiposEntrega: TIPOS_ENTREGA, linhasItem: LINHAS_ITEM };
 };
 
 // Mensagens de retorno por query string, em vez de sessão de flash: o app não
@@ -92,10 +92,10 @@ const pedidoViewController = {
 
     create: async (req, res, next) => {
         try {
-            const { cliente_id, forma_pagamento } = req.body;
+            const { cliente_id, forma_pagamento, tipo_entrega } = req.body;
             const itens = normalizarItens(req.body);
 
-            const pedido = await criarPedido({ cliente_id, forma_pagamento, itens });
+            const pedido = await criarPedido({ cliente_id, forma_pagamento, tipo_entrega, itens });
 
             res.redirect(`/pedidos/${pedido.id}?msg=criado`);
         } catch (err) {

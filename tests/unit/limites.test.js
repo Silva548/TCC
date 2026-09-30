@@ -37,9 +37,11 @@ test('cada entidade tem o limite da sua migration', () => {
 
 test('decimais acima da faixa do DECIMAL são recusados', () => {
     // DECIMAL(10,2) aceita no máximo 99.999.999,99
-    assert.equal(excedeDecimal('preco', 99999999.99), null);
-    assert.ok(excedeDecimal('preco', 100000000));
-    assert.ok(excedeDecimal('preco', 1e15));
+    assert.equal(excedeDecimal('preco_entrega', 99999999.99), null);
+    assert.ok(excedeDecimal('preco_entrega', 100000000));
+    assert.ok(excedeDecimal('preco_entrega', 1e15));
+    assert.equal(excedeDecimal('preco_retirada', 99999999.99), null);
+    assert.ok(excedeDecimal('preco_retirada', 100000000));
 
     // DECIMAL(8,2)
     assert.equal(excedeDecimal('peso_kg', 999999.99), null);
@@ -52,9 +54,9 @@ test('decimais acima da faixa do DECIMAL são recusados', () => {
 
 test('valores não numéricos não são tratados como estouro', () => {
     // A validação de "é número" é responsabilidade do controller
-    assert.equal(excedeDecimal('preco', 'abc'), null);
-    assert.equal(excedeDecimal('preco', NaN), null);
-    assert.equal(excedeDecimal('preco', undefined), null);
+    assert.equal(excedeDecimal('preco_entrega', 'abc'), null);
+    assert.equal(excedeDecimal('preco_entrega', NaN), null);
+    assert.equal(excedeDecimal('preco_entrega', undefined), null);
 });
 
 test('entidade ou campo desconhecido não quebra', () => {

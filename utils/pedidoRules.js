@@ -3,6 +3,25 @@
 const STATUS_VALIDOS = ['pendente', 'processando', 'enviado', 'entregue', 'cancelado'];
 const FORMAS_PAGAMENTO = ['credito', 'debito', 'pix', 'boleto', 'dinheiro'];
 
+// Modalidade do pedido. Cada produto tem um preço para cada uma; a escolha
+// acontece no pedido, não no produto, porque o mesmo carvão pode ser entregue
+// ou retirado.
+const TIPOS_ENTREGA = ['entrega', 'retirada'];
+const MODALIDADE_PADRAO = 'entrega';
+
+// Coluna de preço correspondente a cada modalidade
+const COLUNA_PRECO = {
+    entrega: 'preco_entrega',
+    retirada: 'preco_retirada',
+};
+
+const modalidadeValida = (tipo) => TIPOS_ENTREGA.includes(tipo);
+
+// Preço do produto na modalidade do pedido. Modalidade desconhecida cai no
+// padrão em vez de devolver undefined e contaminar o total com NaN.
+const precoDaModalidade = (produto, tipoEntrega) =>
+    produto[COLUNA_PRECO[modalidadeValida(tipoEntrega) ? tipoEntrega : MODALIDADE_PADRAO]];
+
 // Transições permitidas entre status de pedido
 const TRANSICOES_STATUS = {
     pendente: ['processando', 'cancelado'],
@@ -31,23 +50,31 @@ const mediaEmCentavos = (total, quantidade) => {
 };
 
 // itens:   [{ produto_id, quantidade }]
-// produtos: Map<produto_id, { preco }>
+// produtos: Map<produto_id, { preco_entrega, preco_retirada }>
+// tipoEntrega: 'entrega' | 'retirada' (define qual preço do produto vale)
 //
 // O preço é buscado pelo id, e não pela posição no array: quando o mesmo
 // produto aparece em mais de uma linha, a agregação muda o tamanho da lista e
 // qualquer alinhamento posicional passaria a associar quantidade ao preço
 // errado — ou estourar o array e devolver NaN.
-const calcularTotalCentavos = (itens, produtos) =>
+const calcularTotalCentavos = (itens, produtos, tipoEntrega = MODALIDADE_PADRAO) =>
     itens.reduce(
-        (acc, item) => acc + paraCentavos(produtos.get(item.produto_id).preco) * Number(item.quantidade),
+        (acc, item) =>
+            acc +
+            paraCentavos(precoDaModalidade(produtos.get(item.produto_id), tipoEntrega)) *
+                Number(item.quantidade),
         0
     );
 
 module.exports = {
     STATUS_VALIDOS,
     FORMAS_PAGAMENTO,
+    TIPOS_ENTREGA,
+    MODALIDADE_PADRAO,
     TRANSICOES_STATUS,
     transicaoValida,
+    modalidadeValida,
+    precoDaModalidade,
     paraCentavos,
     mediaEmCentavos,
     calcularTotalCentavos,

@@ -34,9 +34,23 @@ const ROTULOS_PAGAMENTO = {
     dinheiro: 'Dinheiro',
 };
 
+const ROTULOS_EMBALAGEM = {
+    premium: 'Premium',
+    basica: 'Básica',
+};
+
+const ROTULOS_TIPO_ENTREGA = {
+    entrega: 'Entrega',
+    retirada: 'Retirada na empresa',
+};
+
 const rotuloStatus = (status) => ROTULOS_STATUS[status] || status || '-';
 
 const rotuloPagamento = (forma) => ROTULOS_PAGAMENTO[forma] || forma || '-';
+
+const rotuloEmbalagem = (embalagem) => ROTULOS_EMBALAGEM[embalagem] || embalagem || '-';
+
+const rotuloTipoEntrega = (tipo) => ROTULOS_TIPO_ENTREGA[tipo] || tipo || '-';
 
 // Classe do badge Bootstrap, para o status ficar identificável de longe.
 const CLASSE_STATUS = {
@@ -56,7 +70,11 @@ module.exports = {
     dataHora,
     rotuloStatus,
     rotuloPagamento,
+    rotuloEmbalagem,
+    rotuloTipoEntrega,
     classeStatus,
     ROTULOS_STATUS,
     ROTULOS_PAGAMENTO,
+    ROTULOS_EMBALAGEM,
+    ROTULOS_TIPO_ENTREGA,
 };

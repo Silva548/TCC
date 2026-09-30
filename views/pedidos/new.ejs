@@ -1,5 +1,5 @@
 <%
-    const { moeda, rotuloPagamento } = formatadores;
+    const { moeda, rotuloPagamento, rotuloTipoEntrega } = formatadores;
     // Linhas do formulário. Ao reenviar com erro, as linhas que o usuário já
     // preencheu voltam preenchidas e as extras ficam vazias.
     const preenchidos = Array.isArray(itensPreenchidos) ? itensPreenchidos : [];
@@ -49,6 +49,21 @@
         </div>
     </div>
 
+    <div class="form-row">
+        <div class="form-group col-md-4">
+            <label for="tipo_entrega">Entrega ou retirada</label>
+            <%# Decide qual preço do produto entra no total: entrega no endereço
+                do cliente, ou retirada na empresa. %>
+            <select class="form-control" id="tipo_entrega" name="tipo_entrega" required>
+                <% const tipoAtual = String(body && body.tipo_entrega ? body.tipo_entrega : 'entrega'); %>
+                <% tiposEntrega.forEach(tipo => { %>
+                    <option value="<%= tipo %>" <%= tipoAtual === tipo ? 'selected' : '' %>><%= rotuloTipoEntrega(tipo) %></option>
+                <% }) %>
+            </select>
+            <small class="form-text text-muted">Preços diferentes para entrega e retirada.</small>
+        </div>
+    </div>
+
     <h2 class="h5 mt-4">Itens</h2>
     <p class="text-muted small">
         Preencha produto e quantidade na mesma linha. Linhas em branco são
@@ -72,7 +87,7 @@
                                 <option value="">—</option>
                                 <% produtos.forEach(produto => { %>
                                     <option value="<%= produto.id %>" <%= escolhidos(i) === String(produto.id) ? 'selected' : '' %>>
-                                        <%= produto.nome %> — <%= moeda(produto.preco) %> (estoque <%= produto.estoque %>)
+                                        <%= produto.nome %> — entrega <%= moeda(produto.preco_entrega) %> / retirada <%= moeda(produto.preco_retirada) %> (estoque <%= produto.estoque %>)
                                     </option>
                                 <% }) %>
                             </select>

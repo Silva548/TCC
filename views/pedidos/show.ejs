@@ -1,5 +1,5 @@
 <%
-    const { moeda, dataHora, rotuloStatus, rotuloPagamento, classeStatus } = formatadores;
+    const { moeda, dataHora, rotuloStatus, rotuloPagamento, rotuloTipoEntrega, classeStatus } = formatadores;
 %>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -33,6 +33,9 @@
 
                     <dt class="col-5">Pagamento</dt>
                     <dd class="col-7"><%= rotuloPagamento(pedido.forma_pagamento) %></dd>
+
+                    <dt class="col-5">Entrega</dt>
+                    <dd class="col-7"><%= rotuloTipoEntrega(pedido.tipo_entrega) %></dd>
 
                     <dt class="col-5">Status</dt>
                     <dd class="col-7">

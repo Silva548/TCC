@@ -11,7 +11,10 @@ const { Op } = require('sequelize');
 const {
     STATUS_VALIDOS,
     FORMAS_PAGAMENTO,
+    TIPOS_ENTREGA,
+    MODALIDADE_PADRAO,
     transicaoValida,
+    precoDaModalidade,
     calcularTotalCentavos,
 } = require('../utils/pedidoRules');
 
@@ -82,13 +85,20 @@ const itensDoFormulario = (body = {}) => {
 const normalizarItens = (body) =>
     Array.isArray(body.itens) ? body.itens : itensDoFormulario(body);
 
-const criarPedido = async ({ cliente_id, forma_pagamento, itens }) => {
+const criarPedido = async ({ cliente_id, forma_pagamento, tipo_entrega, itens }) => {
     if (!cliente_id || !forma_pagamento) {
         throw falha(400, 'cliente_id e forma_pagamento são obrigatórios');
     }
 
     if (!FORMAS_PAGAMENTO.includes(forma_pagamento)) {
         throw falha(400, 'Forma de pagamento inválida. Use: ' + FORMAS_PAGAMENTO.join(', '));
+    }
+
+    // Sem valor explícito, o pedido é uma entrega — o modo mais comum e o que
+    // o sistema assumia antes de a coluna existir.
+    const modalidade = tipo_entrega || MODALIDADE_PADRAO;
+    if (!TIPOS_ENTREGA.includes(modalidade)) {
+        throw falha(400, 'Tipo de entrega inválido. Use: ' + TIPOS_ENTREGA.join(', '));
     }
 
     if (!Array.isArray(itens) || itens.length === 0) {
@@ -147,15 +157,18 @@ const criarPedido = async ({ cliente_id, forma_pagamento, itens }) => {
             produtos.set(produtoId, produto);
         }
 
-        // Total calculado em centavos e convertido de volta para decimal
+        // Total calculado em centavos e convertido de volta para decimal,
+        // usando o preço da modalidade escolhida no pedido.
         const valor_total = calcularTotalCentavos(
             [...porProduto].map(([produto_id, quantidade]) => ({ produto_id, quantidade })),
-            produtos
+            produtos,
+            modalidade
         ) / 100;
 
         const novoPedido = await Pedido.create({
             cliente_id,
             forma_pagamento,
+            tipo_entrega: modalidade,
             valor_total,
             status: 'pendente',
         }, { transaction: t });
@@ -167,7 +180,7 @@ const criarPedido = async ({ cliente_id, forma_pagamento, itens }) => {
                 pedido_id: novoPedido.id,
                 produto_id: produtoId,
                 quantidade,
-                preco_unitario: produto.preco,
+                preco_unitario: precoDaModalidade(produto, modalidade),
             }, { transaction: t });
 
             await produto.decrement('estoque', { by: quantidade, transaction: t });

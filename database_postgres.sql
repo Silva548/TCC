@@ -196,7 +196,8 @@ CREATE TABLE public.pedidos (
     valor_total numeric(12,2) NOT NULL,
     forma_pagamento public.enum_pedidos_forma_pagamento NOT NULL,
     "createdAt" timestamp with time zone NOT NULL,
-    "updatedAt" timestamp with time zone NOT NULL
+    "updatedAt" timestamp with time zone NOT NULL,
+    tipo_entrega character varying(20) DEFAULT 'entrega'::character varying NOT NULL
 );
 
 
@@ -228,14 +229,23 @@ CREATE TABLE public.produtos (
     id integer NOT NULL,
     nome character varying(255) NOT NULL,
     descricao text,
-    preco numeric(10,2) NOT NULL,
     peso_kg numeric(8,2) NOT NULL,
     estoque integer DEFAULT 0 NOT NULL,
     "createdAt" timestamp with time zone NOT NULL,
     "updatedAt" timestamp with time zone NOT NULL,
     categoria_id integer,
+    preco_entrega numeric(10,2) DEFAULT 0 NOT NULL,
+    preco_retirada numeric(10,2) DEFAULT 0 NOT NULL,
+    embalagem character varying(20) DEFAULT 'basica'::character varying NOT NULL,
     CONSTRAINT produtos_estoque_nao_negativo CHECK ((estoque >= 0))
 );
+
+
+--
+-- Name: COLUMN produtos.peso_kg; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.produtos.peso_kg IS 'Peso do produto em quilogramas';
 
 
 --
@@ -442,6 +452,13 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: IDX_session_expire; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "IDX_session_expire" ON public.session USING btree (expire);
+
+
+--
 -- Name: idx_clientes_documento; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -513,10 +530,3 @@ ALTER TABLE ONLY public.pedidos
 
 ALTER TABLE ONLY public.produtos
     ADD CONSTRAINT produtos_categoria_id_fkey FOREIGN KEY (categoria_id) REFERENCES public.categorias(id) ON UPDATE CASCADE ON DELETE RESTRICT;
-
-
---
--- PostgreSQL database dump complete
---
-
-

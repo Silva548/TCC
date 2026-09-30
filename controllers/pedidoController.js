@@ -21,10 +21,10 @@ const pedidoController = {
 
     createPedido: async (req, res, next) => {
         try {
-            const { cliente_id, forma_pagamento } = req.body;
+            const { cliente_id, forma_pagamento, tipo_entrega } = req.body;
             const itens = normalizarItens(req.body);
 
-            const novoPedido = await criarPedido({ cliente_id, forma_pagamento, itens });
+            const novoPedido = await criarPedido({ cliente_id, forma_pagamento, tipo_entrega, itens });
 
             res.status(201).json({
                 message: 'Pedido criado com sucesso',
