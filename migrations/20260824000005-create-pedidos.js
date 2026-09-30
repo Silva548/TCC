@@ -12,7 +12,9 @@ module.exports = {
                 type: Sequelize.INTEGER,
                 allowNull: false,
                 references: { model: 'clientes', key: 'id' },
-                onDelete: 'CASCADE',
+                // RESTRICT: preserva o histórico de vendas. A 20260930000002
+                // converte bancos já criados a partir do CASCADE original.
+                onDelete: 'RESTRICT',
             },
             data: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.NOW },
             status: {

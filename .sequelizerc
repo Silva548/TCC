@@ -3,5 +3,8 @@ const path = require('path');
 module.exports = {
     config: path.resolve('config', 'sequelize-cli-config.js'),
     'migrations-path': path.resolve('migrations'),
-    'seeders-path': path.resolve('seeds'),
+    // Sem 'seeders-path': seeds/seedDatabase.js é um script avulso que chama
+    // os models na mão, não um seeder do Sequelize CLI (que exige exportar
+    // up/down). Apontar esta chave para lá faria `sequelize db:seed:all`
+    // falhar com "up is not a function". A entrada está em `npm run seed`.
 };

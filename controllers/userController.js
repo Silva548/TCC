@@ -1,12 +1,25 @@
 const bcrypt = require('bcryptjs');
-const User = require('../models/userModel');
+const { Op } = require('sequelize');
+const { User } = require('../models');
 const { parsePaginacao, metadados } = require('../utils/paginacao');
+const { excedeTexto } = require('../utils/limites');
 
 const ROLES_VALIDOS = ['admin', 'user'];
 
+// Impede que o sistema fique sem nenhum administrador capaz de gerenciar usuários.
+// Função externa (e não método do literal) porque o controller usa arrow functions,
+// onde `this` não referencia o próprio objeto.
+const contarAdmins = async (excluirId = null) => {
+    const where = { role: 'admin' };
+    if (excluirId !== null) {
+        where.id = { [Op.ne]: excluirId };
+    }
+    return User.count({ where });
+};
+
 const userController = {
     renderCreateForm: (req, res) => {
-        res.render('users/create', { erro: null });
+        res.render('users/create', { erro: null, body: null });
     },
 
     createUser: async (req, res, next) => {
@@ -14,10 +27,26 @@ const userController = {
             const { username, password, role } = req.body;
 
             if (!username || !username.trim() || !password) {
-                return res.status(400).render('users/create', { erro: 'Usuário e senha são obrigatórios' });
+                return res.status(400).render('users/create', {
+                    erro: 'Usuário e senha são obrigatórios',
+                    // `password` nunca é reenviado ao formulário
+                    body: { username, role },
+                });
             }
+
+            const limite = excedeTexto('usuario', 'username', username.trim());
+            if (limite) {
+                return res.status(400).render('users/create', {
+                    erro: limite,
+                    body: { username, role },
+                });
+            }
+
             if (password.length < 6) {
-                return res.status(400).render('users/create', { erro: 'A senha deve ter no mínimo 6 caracteres' });
+                return res.status(400).render('users/create', {
+                    erro: 'A senha deve ter no mínimo 6 caracteres',
+                    body: { username, role },
+                });
             }
 
             await User.create({
@@ -29,7 +58,10 @@ const userController = {
             res.redirect('/users');
         } catch (err) {
             if (err.name === 'SequelizeUniqueConstraintError') {
-                return res.status(400).render('users/create', { erro: 'Nome de usuário já cadastrado' });
+                return res.status(400).render('users/create', {
+                    erro: 'Nome de usuário já cadastrado',
+                    body: { username: req.body.username, role: req.body.role },
+                });
             }
             next(err);
         }
@@ -80,7 +112,7 @@ const userController = {
                 return res.status(404).render('404');
             }
 
-            res.render('users/edit', { user, erro: null });
+            res.render('users/edit', { user, erro: null, body: null });
         } catch (err) {
             next(err);
         }
@@ -96,9 +128,38 @@ const userController = {
             }
 
             const { username, password, role } = req.body;
+            // `password` nunca é reenviado ao formulário
+            const body = { username, role };
 
             if (!username || !username.trim()) {
-                return res.status(400).render('users/edit', { user, erro: 'O nome de usuário é obrigatório' });
+                return res.status(400).render('users/edit', {
+                    user,
+                    erro: 'O nome de usuário é obrigatório',
+                    body,
+                });
+            }
+
+            const limite = excedeTexto('usuario', 'username', username.trim());
+            if (limite) {
+                return res.status(400).render('users/edit', {
+                    user,
+                    erro: limite,
+                    body,
+                });
+            }
+
+            // Rebaixar o único admin deixaria o sistema sem gestão de usuários
+            const rebaixandoUltimoAdmin = user.role === 'admin'
+                && ROLES_VALIDOS.includes(role)
+                && role !== 'admin'
+                && (await contarAdmins(user.id)) === 0;
+
+            if (rebaixandoUltimoAdmin) {
+                return res.status(400).render('users/edit', {
+                    user,
+                    erro: 'Não é possível rebaixar o único administrador do sistema',
+                    body,
+                });
             }
 
             const dados = {
@@ -109,7 +170,11 @@ const userController = {
             // Só altera a senha se uma nova for informada
             if (password && password.trim() !== '') {
                 if (password.length < 6) {
-                    return res.status(400).render('users/edit', { user, erro: 'A nova senha deve ter no mínimo 6 caracteres' });
+                    return res.status(400).render('users/edit', {
+                        user,
+                        erro: 'A nova senha deve ter no mínimo 6 caracteres',
+                        body,
+                    });
                 }
                 dados.password = await bcrypt.hash(password, 10);
             }
@@ -118,7 +183,14 @@ const userController = {
             res.redirect('/users');
         } catch (err) {
             if (err.name === 'SequelizeUniqueConstraintError') {
-                return res.status(400).render('users/edit', { user: { id: req.params.id }, erro: 'Nome de usuário já cadastrado' });
+                // Re-busca a entidade completa: renderizar apenas { id } faria o
+                // formulário voltar em branco
+                const atual = await User.findByPk(req.params.id);
+                return res.status(400).render('users/edit', {
+                    user: atual || { id: req.params.id },
+                    erro: 'Nome de usuário já cadastrado',
+                    body: { username: req.body.username, role: req.body.role },
+                });
             }
             next(err);
         }
@@ -132,10 +204,16 @@ const userController = {
             }
 
             const user = await User.findByPk(req.params.id);
-            if (user) {
-                await user.destroy();
+            if (!user) {
+                return res.redirect('/users');
             }
 
+            // Impede que o sistema fique sem nenhum administrador
+            if (user.role === 'admin' && (await contarAdmins(user.id)) === 0) {
+                return res.status(400).send('Não é possível excluir o único administrador do sistema');
+            }
+
+            await user.destroy();
             res.redirect('/users');
         } catch (err) {
             next(err);
@@ -144,18 +222,25 @@ const userController = {
 
     searchUsers: async (req, res, next) => {
         try {
-            const search = (req.query.search || '').replace(/[%_\\]/g, '');
+            const raw = (req.query.search || '');
+            const escaped = raw
+                .replace(/\\/g, '\\\\')
+                .replace(/%/g, '\\%')
+                .replace(/_/g, '\\_');
 
-            const users = await User.findAll({
+            const pag = parsePaginacao(req.query);
+            const { rows: users, count } = await User.findAndCountAll({
                 where: {
                     username: {
-                        [require('sequelize').Op.like]: `%${search}%`,
+                        [Op.iLike]: `%${escaped}%`,
                     },
                 },
                 attributes: { exclude: ['password'] },
+                limit: pag.limite,
+                offset: pag.offset,
             });
 
-            res.json({ users });
+            res.json({ users, paginacao: metadados(pag, count) });
         } catch (err) {
             next(err);
         }

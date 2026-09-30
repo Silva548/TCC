@@ -18,8 +18,18 @@ const transicaoValida = (atual, novo) =>
 // Trabalha em centavos (inteiros) para evitar erros de arredondamento binário
 const paraCentavos = (valorDecimal) => Math.round(parseFloat(valorDecimal) * 100);
 
+// itens:   [{ produto_id, quantidade }]
+// produtos: Map<produto_id, { preco }>
+//
+// O preço é buscado pelo id, e não pela posição no array: quando o mesmo
+// produto aparece em mais de uma linha, a agregação muda o tamanho da lista e
+// qualquer alinhamento posicional passaria a associar quantidade ao preço
+// errado — ou estourar o array e devolver NaN.
 const calcularTotalCentavos = (itens, produtos) =>
-    itens.reduce((acc, item, i) => acc + paraCentavos(produtos[i].preco) * Number(item.quantidade), 0);
+    itens.reduce(
+        (acc, item) => acc + paraCentavos(produtos.get(item.produto_id).preco) * Number(item.quantidade),
+        0
+    );
 
 module.exports = {
     STATUS_VALIDOS,

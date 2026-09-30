@@ -1,0 +1,82 @@
+<%
+    // Formatadores vêm do controller: manter a formatação em JS, e não em
+    // template, garante que a mesma regra apareça na tela e em qualquer
+    // exportação futura.
+    const { moeda, dataHora, rotuloStatus, rotuloPagamento, classeStatus } = formatadores;
+%>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Pedidos</h1>
+    <a href="/pedidos/new" class="btn btn-success">Novo pedido</a>
+</div>
+
+<% if (typeof aviso !== 'undefined' && aviso) { %>
+    <div class="alert alert-success"><%= aviso %></div>
+<% } %>
+
+<form method="GET" action="/pedidos" class="form-row align-items-end mb-3">
+    <div class="form-group col-sm-4">
+        <label for="status">Filtrar por status</label>
+        <select class="form-control" id="status" name="status">
+            <option value="">Todos</option>
+            <% statusValidos.forEach(s => { %>
+                <option value="<%= s %>" <%= statusFiltro === s ? 'selected' : '' %>><%= rotuloStatus(s) %></option>
+            <% }) %>
+        </select>
+    </div>
+    <div class="form-group col-sm-auto">
+        <button type="submit" class="btn btn-secondary">Filtrar</button>
+    </div>
+    <% if (statusFiltro) { %>
+        <div class="form-group col-sm-auto">
+            <a href="/pedidos" class="btn btn-link">Limpar filtro</a>
+        </div>
+    <% } %>
+</form>
+
+<% if (!pedidos.length) { %>
+    <div class="alert alert-info">
+        <% if (statusFiltro) { %>
+            Nenhum pedido com o status <strong><%= rotuloStatus(statusFiltro) %></strong>.
+        <% } else { %>
+            Ainda não há pedidos cadastrados. <a href="/pedidos/new">Criar o primeiro</a>.
+        <% } %>
+    </div>
+<% } else { %>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Data</th>
+                    <th>Cliente</th>
+                    <th>Pagamento</th>
+                    <th class="text-right">Total</th>
+                    <th>Status</th>
+                    <th class="text-right">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% pedidos.forEach(pedido => { %>
+                    <tr>
+                        <td><%= pedido.id %></td>
+                        <td><%= dataHora(pedido.data) %></td>
+                        <td><%= pedido.Cliente ? pedido.Cliente.nome : '-' %></td>
+                        <td><%= rotuloPagamento(pedido.forma_pagamento) %></td>
+                        <td class="text-right"><%= moeda(pedido.valor_total) %></td>
+                        <td>
+                            <span class="badge <%= classeStatus(pedido.status) %>">
+                                <%= rotuloStatus(pedido.status) %>
+                            </span>
+                        </td>
+                        <td class="text-right">
+                            <a href="/pedidos/<%= pedido.id %>" class="btn btn-sm btn-outline-primary">Ver</a>
+                        </td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+
+    <%- include('../partials/pagination') %>
+<% } %>

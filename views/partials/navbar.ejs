@@ -47,8 +47,12 @@
                     </div>
                 </li>
 
-                <% if (currentUser.role === 'admin') { %>
-                    <!-- Dropdown Usuários -->
+                <!-- Pedidos -->
+                <li class="nav-item">
+                    <a class="nav-link" href="/pedidos">Pedidos</a>
+                </li>
+
+                <% if (currentUser.role === 'admin') { %>                    <!-- Dropdown Usuários -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownUsers" role="button"
                             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">

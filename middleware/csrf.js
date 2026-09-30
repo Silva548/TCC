@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { erro } = require('../utils/responder');
 
 const csrfSetup = (req, res, next) => {
     if (!req.session.csrfToken) {
@@ -38,7 +39,9 @@ const verifyCsrf = (req, res, next) => {
 
     const token = req.body && req.body._csrf;
     if (!token || !req.session || !compararTokens(token, req.session.csrfToken)) {
-        return res.status(403).send('Token CSRF inválido ou ausente');
+        // erro() em vez de send(): um cliente JSON (ex.: POST /pedidos) recebe
+        // {"error": ...} em application/json, e não text/plain
+        return erro(res, req, 403, 'Token CSRF inválido ou ausente');
     }
 
     next();

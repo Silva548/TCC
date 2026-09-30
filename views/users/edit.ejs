@@ -6,9 +6,13 @@
 
 <form action="/users/<%= user.id %>?_method=PUT" method="POST">
     <%- include('../partials/csrf') %>
+    <%
+        const usernameAtual = body && body.username ? body.username : (user.username || '');
+        const roleAtual = body && body.role ? body.role : user.role;
+    %>
     <div class="form-group">
         <label for="username">Usuário</label>
-        <input type="text" class="form-control" id="username" name="username" value="<%= user.username || '' %>" required autocomplete="off">
+        <input type="text" class="form-control" id="username" name="username" value="<%= usernameAtual %>" maxlength="100" required autocomplete="off">
     </div>
     <div class="form-group">
         <label for="password">Nova senha (deixe em branco para manter a atual)</label>
@@ -17,8 +21,8 @@
     <div class="form-group">
         <label for="role">Perfil</label>
         <select class="form-control" id="role" name="role">
-            <option value="user" <%= user.role === 'user' ? 'selected' : '' %>>User</option>
-            <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Admin</option>
+            <option value="user" <%= roleAtual === 'user' ? 'selected' : '' %>>User</option>
+            <option value="admin" <%= roleAtual === 'admin' ? 'selected' : '' %>>Admin</option>
         </select>
     </div>
     <button type="submit" class="btn btn-warning">Salvar</button>

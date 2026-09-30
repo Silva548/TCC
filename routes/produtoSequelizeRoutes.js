@@ -1,10 +1,10 @@
 const express = require('express');
 const produtoController = require('../controllers/produtoSequelizeController');
-const { validarIdParam } = require('../middleware/validate');
+const { validarIdParam, validarQueryInteiro } = require('../middleware/validate');
 const router = express.Router();
 router.param('id', validarIdParam);
 
-router.get('/', produtoController.getAllProdutos);
+router.get('/', validarQueryInteiro('categoria_id'), produtoController.getAllProdutos);
 router.get('/new', produtoController.renderCreateForm);
 router.post('/', produtoController.createProduto);
 router.get('/:id', produtoController.getProdutoById);

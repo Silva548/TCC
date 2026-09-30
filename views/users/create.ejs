@@ -8,7 +8,7 @@
     <%- include('../partials/csrf') %>
     <div class="form-group">
         <label for="username">Usuário</label>
-        <input type="text" class="form-control" id="username" name="username" required autocomplete="off">
+        <input type="text" class="form-control" id="username" name="username" value="<%= body && body.username ? body.username : '' %>" maxlength="100" required autocomplete="off">
     </div>
     <div class="form-group">
         <label for="password">Senha (mínimo 6 caracteres)</label>
@@ -17,8 +17,8 @@
     <div class="form-group">
         <label for="role">Perfil</label>
         <select class="form-control" id="role" name="role">
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
+            <option value="user" <%= !body || body.role !== 'admin' ? 'selected' : '' %>>User</option>
+            <option value="admin" <%= body && body.role === 'admin' ? 'selected' : '' %>>Admin</option>
         </select>
     </div>
     <button type="submit" class="btn btn-primary">Cadastrar</button>

@@ -16,6 +16,14 @@ module.exports = [
                 process: 'readonly',
                 console: 'readonly',
                 Buffer: 'readonly',
+                // Globais do runtime Node usados pela suíte de integração.
+                // Sem declará-los aqui, `no-undef` acusaria fetch e
+                // URLSearchParams como indefinidos.
+                fetch: 'readonly',
+                URL: 'readonly',
+                URLSearchParams: 'readonly',
+                AbortController: 'readonly',
+                setTimeout: 'readonly',
             },
         },
         rules: {

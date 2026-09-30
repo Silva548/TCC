@@ -1,16 +1,51 @@
-<%# Exibe navegação de páginas. Espera: paginacao = { pagina, limite, total_paginas } e caminhoBase (ex.: '/produtos') %>
+<%# Exibe navegação de páginas. Espera: paginacao = { pagina, limite, total_paginas } e caminhoBase (ex.: '/produtos')
+    queryExtra (opcional): string já com "&" para preservar filtros, ex.: '&status=pendente' %>
 <% if (paginacao && paginacao.total_paginas > 1) { %>
+    <%
+        // Links sem `aria-disabled` nem `tabindex="-1"` continuavam sendo
+        // focalizáveis e anunciados como links pelo leitor de tela, mesmo
+        // com o .disabled do Bootstrap. Quando desabilitado, emitimos <span>
+        // em vez de <a href>: não existe alvo de navegação para clicar, o que
+        // também evita o "?page=0" e o "?page=<ultima>+1" que a view gerava
+        // mesmo desabilitada.
+        const paginaAtual = Number(paginacao.pagina) || 1;
+        const total = Number(paginacao.total_paginas) || 1;
+        const limite = paginacao.limite;
+        const anterior = paginaAtual - 1;
+        const proxima = paginaAtual + 1;
+        // Sem isto, trocar de página derrubava o filtro aplicado: o link
+        // só carregava page e limit.
+        const extra = typeof queryExtra === 'string' ? queryExtra : '';
+    %>
     <nav aria-label="Navegação de páginas" class="mt-3">
         <ul class="pagination">
-            <li class="page-item <%= paginacao.pagina <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="<%= caminhoBase %>?page=<%= paginacao.pagina - 1 %>&limit=<%= paginacao.limite %>" aria-label="Anterior">&laquo;</a>
-            </li>
+            <% if (anterior >= 1) { %>
+                <li class="page-item">
+                    <a class="page-link" rel="prev"
+                        href="<%= caminhoBase %>?page=<%= anterior %>&limit=<%= limite %><%= extra %>"
+                        aria-label="Página anterior">&laquo;</a>
+                </li>
+            <% } else { %>
+                <li class="page-item disabled">
+                    <span class="page-link" aria-hidden="true">&laquo;</span>
+                </li>
+            <% } %>
+
             <li class="page-item disabled">
-                <span class="page-link">Página <%= paginacao.pagina %> de <%= paginacao.total_paginas %></span>
+                <span class="page-link">Página <%= paginaAtual %> de <%= total %></span>
             </li>
-            <li class="page-item <%= paginacao.pagina >= paginacao.total_paginas ? 'disabled' : '' %>">
-                <a class="page-link" href="<%= caminhoBase %>?page=<%= paginacao.pagina + 1 %>&limit=<%= paginacao.limite %>" aria-label="Próxima">&raquo;</a>
-            </li>
+
+            <% if (proxima <= total) { %>
+                <li class="page-item">
+                    <a class="page-link" rel="next"
+                        href="<%= caminhoBase %>?page=<%= proxima %>&limit=<%= limite %><%= extra %>"
+                        aria-label="Próxima página">&raquo;</a>
+                </li>
+            <% } else { %>
+                <li class="page-item disabled">
+                    <span class="page-link" aria-hidden="true">&raquo;</span>
+                </li>
+            <% } %>
         </ul>
     </nav>
 <% } %>

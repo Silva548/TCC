@@ -8,7 +8,7 @@
     <%- include('../partials/csrf') %>
     <div class="form-group">
         <label for="nome">Nome da categoria</label>
-        <input type="text" class="form-control" id="nome" name="nome" required>
+        <input type="text" class="form-control" id="nome" name="nome" value="<%= body && body.nome ? body.nome : '' %>" maxlength="255" required>
     </div>
     <button type="submit" class="btn btn-primary">Cadastrar</button>
 </form>

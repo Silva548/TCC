@@ -8,23 +8,37 @@
     <%- include('../partials/csrf') %>
     <div class="form-group">
         <label for="nome">Nome</label>
-        <input type="text" class="form-control" id="nome" name="nome" value="<%= produto.nome || '' %>" required>
+        <input type="text" class="form-control" id="nome" name="nome" value="<%= body && body.nome ? body.nome : (produto.nome || '') %>" maxlength="255" required>
     </div>
     <div class="form-group">
         <label for="descricao">Descrição</label>
-        <textarea id="descricao" class="form-control" name="descricao"><%= produto.descricao || '' %></textarea>
+        <textarea id="descricao" class="form-control" name="descricao"><%= body && body.descricao !== undefined ? body.descricao : (produto.descricao || '') %></textarea>
     </div>
     <div class="form-group">
         <label for="preco">Preço (R$)</label>
-        <input type="number" step="0.01" min="0.01" class="form-control" id="preco" name="preco" value="<%= produto.preco %>" required>
+        <input type="number" step="0.01" min="0.01" class="form-control" id="preco" name="preco" value="<%= body && body.preco ? body.preco : produto.preco %>" required>
     </div>
     <div class="form-group">
         <label for="peso_kg">Peso (kg)</label>
-        <input type="number" step="0.01" min="0.01" class="form-control" id="peso_kg" name="peso_kg" value="<%= produto.peso_kg %>" required>
+        <input type="number" step="0.01" min="0.01" class="form-control" id="peso_kg" name="peso_kg" value="<%= body && body.peso_kg ? body.peso_kg : produto.peso_kg %>" required>
     </div>
     <div class="form-group">
         <label for="estoque">Estoque</label>
-        <input type="number" min="0" step="1" class="form-control" id="estoque" name="estoque" value="<%= produto.estoque %>" required>
+        <input type="number" min="0" step="1" class="form-control" id="estoque" name="estoque" value="<%= body && body.estoque !== undefined ? body.estoque : produto.estoque %>" required>
+    </div>
+    <div class="form-group">
+        <label for="categoria_id">Categoria</label>
+        <select class="form-control" id="categoria_id" name="categoria_id">
+            <%
+                const categoriaAtual = body && body.categoria_id !== undefined
+                    ? String(body.categoria_id)
+                    : String(produto.categoria_id || '');
+            %>
+            <option value="">Sem categoria</option>
+            <% categorias.forEach(categoria => { %>
+                <option value="<%= categoria.id %>" <%= categoriaAtual === String(categoria.id) ? 'selected' : '' %>><%= categoria.nome %></option>
+            <% }) %>
+        </select>
     </div>
     <button type="submit" class="btn btn-warning">Salvar</button>
 </form>

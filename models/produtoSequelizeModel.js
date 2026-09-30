@@ -29,6 +29,15 @@ const Produto = sequelize.define('Produto', {
         allowNull: false,
         defaultValue: 0,
     },
+    categoria_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'categorias',
+            key: 'id',
+        },
+        onDelete: 'RESTRICT',
+    },
     createdAt: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW,

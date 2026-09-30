@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { requireAuth, requireRole } = require('../middleware/auth');
+const { requireAuth, requireRole } = require('../../middleware/auth');
 
 // Stubs mínimos de req/res/next
 const criarReq = ({ userId, role, aceita = 'html' }) => ({
@@ -34,8 +34,10 @@ test('requireAuth redireciona anônimo para /login', () => {
     const req = criarReq({});
     const res = criarRes();
     requireAuth(req, res, () => assert.fail('não deveria passar'));
-    assert.equal(res.redirectUrl, '/login');
-    assert.equal(req.session.returnTo, '/original');
+    // O destino vai na query, não na sessão: gravar req.session aqui faria o
+    // express-session persistir um registro para todo visitante anônimo.
+    assert.equal(res.redirectUrl, '/login?next=%2Foriginal');
+    assert.equal(req.session.returnTo, undefined);
 });
 
 test('requireAuth devolve 401 JSON para clientes de API', () => {

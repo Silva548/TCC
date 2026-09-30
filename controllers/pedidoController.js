@@ -1,108 +1,34 @@
-const Pedido = require('../models/pedidoModel');
-const ItemPedido = require('../models/itemPedidoModel');
-const Cliente = require('../models/clienteModel');
-const Produto = require('../models/produtoSequelizeModel');
-const sequelize = require('../config/db');
+const { Pedido, ItemPedido, Cliente } = require('../models');
+// Op vem do pacote sequelize, não de models/index.js — models/index.js
+// exporta os models, e `Op` vindo de lá é undefined em silêncio (o ESLint não
+// acusa, porque parece uma propriedade definida).
 const { Op, fn, col } = require('sequelize');
-const { STATUS_VALIDOS, FORMAS_PAGAMENTO, transicaoValida, calcularTotalCentavos } = require('../utils/pedidoRules');
+const { periodoRelatorio } = require('../utils/periodo');
 const { parsePaginacao, metadados } = require('../utils/paginacao');
+const {
+    falha,
+    criarPedido,
+    mudarStatus,
+    excluirPedido,
+    normalizarItens,
+} = require('../services/pedidoService');
 
-const falha = (status, message) => Object.assign(new Error(message), { status });
-
-const devolverEstoque = async (pedidoId, t) => {
-    const itens = await ItemPedido.findAll({ where: { pedido_id: pedidoId }, transaction: t });
-    for (const item of itens) {
-        const produto = await Produto.findByPk(item.produto_id, { transaction: t, lock: t.LOCK.UPDATE });
-        if (produto) {
-            await produto.increment('estoque', { by: item.quantidade, transaction: t });
-        }
-    }
-};
-
+// Camada JSON de /pedidos. A escrita (criar, mudar status, excluir) mora em
+// services/pedidoService.js e é compartilhada com a UI web — ver o comentário
+// do serviço sobre por que a lógica não pode ser duplicada.
 const pedidoController = {
 
     createPedido: async (req, res, next) => {
         try {
-            const { cliente_id, forma_pagamento, itens } = req.body;
+            const { cliente_id, forma_pagamento } = req.body;
+            const itens = normalizarItens(req.body);
 
-            if (!cliente_id || !forma_pagamento) {
-                throw falha(400, 'cliente_id e forma_pagamento são obrigatórios');
-            }
+            const novoPedido = await criarPedido({ cliente_id, forma_pagamento, itens });
 
-            if (!FORMAS_PAGAMENTO.includes(forma_pagamento)) {
-                throw falha(400, 'Forma de pagamento inválida. Use: ' + FORMAS_PAGAMENTO.join(', '));
-            }
-
-            if (!Array.isArray(itens) || itens.length === 0) {
-                throw falha(400, 'O pedido deve ter pelo menos um item');
-            }
-
-            // Normaliza as quantidades uma única vez
-            for (const item of itens) {
-                item.quantidade = Number(item.quantidade);
-                if (!Number.isInteger(item.quantidade) || item.quantidade < 1) {
-                    throw falha(400, 'A quantidade de cada item deve ser um número inteiro maior que zero');
-                }
-                if (!Number.isInteger(Number(item.produto_id))) {
-                    throw falha(400, 'produto_id inválido');
-                }
-            }
-
-            // Transação garante consistência entre pedido, itens e estoque
-            const t = await sequelize.transaction();
-            try {
-                const cliente = await Cliente.findByPk(cliente_id, { transaction: t, lock: t.LOCK.UPDATE });
-                if (!cliente) {
-                    throw falha(404, 'Cliente não encontrado');
-                }
-
-                const produtos = [];
-
-                for (const item of itens) {
-                    // Lock pessimista impede venda concorrente além do estoque
-                    const produto = await Produto.findByPk(item.produto_id, { transaction: t, lock: t.LOCK.UPDATE });
-                    if (!produto) {
-                        throw falha(404, `Produto ${item.produto_id} não encontrado`);
-                    }
-
-                    if (produto.estoque < item.quantidade) {
-                        throw falha(400, `Estoque insuficiente para ${produto.nome}`);
-                    }
-
-                    produtos.push(produto);
-                }
-
-                // Total calculado em centavos e convertido de volta para decimal
-                const valor_total = calcularTotalCentavos(itens, produtos) / 100;
-
-                const novoPedido = await Pedido.create({
-                    cliente_id,
-                    forma_pagamento,
-                    valor_total,
-                    status: 'pendente',
-                }, { transaction: t });
-
-                for (let i = 0; i < itens.length; i++) {
-                    await ItemPedido.create({
-                        pedido_id: novoPedido.id,
-                        produto_id: itens[i].produto_id,
-                        quantidade: itens[i].quantidade,
-                        preco_unitario: produtos[i].preco,
-                    }, { transaction: t });
-
-                    await produtos[i].decrement('estoque', { by: itens[i].quantidade, transaction: t });
-                }
-
-                await t.commit();
-
-                res.status(201).json({
-                    message: 'Pedido criado com sucesso',
-                    pedido: novoPedido,
-                });
-            } catch (err) {
-                await t.rollback();
-                throw err;
-            }
+            res.status(201).json({
+                message: 'Pedido criado com sucesso',
+                pedido: novoPedido,
+            });
         } catch (err) {
             next(err);
         }
@@ -114,11 +40,10 @@ const pedidoController = {
                 include: [
                     {
                         model: Cliente,
-                        attributes: { exclude: ['senha'] },
                     },
                     {
                         model: ItemPedido,
-                        include: [Produto],
+                        include: ['Produto'],
                     },
                 ],
             });
@@ -148,7 +73,6 @@ const pedidoController = {
                 include: [
                     {
                         model: Cliente,
-                        attributes: { exclude: ['senha'] },
                     },
                 ],
                 order: [['data', 'DESC']],
@@ -168,39 +92,7 @@ const pedidoController = {
 
     updatePedidoStatus: async (req, res, next) => {
         try {
-            const pedido = await Pedido.findByPk(req.params.id);
-            if (!pedido) {
-                return res.status(404).json({ message: 'Pedido não encontrado' });
-            }
-
-            const { status } = req.body;
-
-            if (!STATUS_VALIDOS.includes(status)) {
-                throw falha(400, 'Status inválido. Use: ' + STATUS_VALIDOS.join(', '));
-            }
-
-            if (!transicaoValida(pedido.status, status)) {
-                throw falha(
-                    400,
-                    `Transição inválida: "${pedido.status}" → "${status}"`
-                );
-            }
-
-            // Cancelamento devolve os itens ao estoque
-            if (status === 'cancelado') {
-                const t = await sequelize.transaction();
-                try {
-                    await devolverEstoque(pedido.id, t);
-                    await pedido.update({ status }, { transaction: t });
-                    await t.commit();
-                } catch (err) {
-                    await t.rollback();
-                    throw err;
-                }
-            } else {
-                await pedido.update({ status });
-            }
-
+            const pedido = await mudarStatus(req.params.id, req.body.status);
             res.json({ message: 'Status atualizado', pedido });
         } catch (err) {
             next(err);
@@ -209,27 +101,8 @@ const pedidoController = {
 
     deletePedido: async (req, res, next) => {
         try {
-            const t = await sequelize.transaction();
-            try {
-                const pedido = await Pedido.findByPk(req.params.id, { transaction: t, lock: t.LOCK.UPDATE });
-                if (!pedido) {
-                    await t.rollback();
-                    return res.status(404).json({ message: 'Pedido não encontrado' });
-                }
-
-                // Pedidos já cancelados tiveram o estoque devolvido no momento do cancelamento
-                if (pedido.status !== 'cancelado') {
-                    await devolverEstoque(pedido.id, t);
-                }
-
-                await pedido.destroy({ transaction: t });
-                await t.commit();
-
-                res.json({ message: 'Pedido deletado com sucesso' });
-            } catch (err) {
-                await t.rollback();
-                throw err;
-            }
+            await excluirPedido(req.params.id);
+            res.json({ message: 'Pedido deletado com sucesso' });
         } catch (err) {
             next(err);
         }
@@ -240,16 +113,23 @@ const pedidoController = {
             const { dataInicio, dataFim } = req.query;
             const where = {};
 
-            if (dataInicio && dataFim) {
-                const inicio = new Date(dataInicio);
-                const fim = new Date(dataFim);
-
-                if (isNaN(inicio.getTime()) || isNaN(fim.getTime())) {
-                    throw falha(400, 'Datas inválidas. Use o formato AAAA-MM-DD');
+            if (dataInicio || dataFim) {
+                if (!dataInicio || !dataFim) {
+                    throw falha(400, 'Informe dataInicio e dataFim para filtrar o período');
                 }
 
-                where.data = { [Op.between]: [inicio, fim] };
+                const { erro, inicio, fim } = periodoRelatorio(dataInicio, dataFim);
+                if (erro) {
+                    throw falha(400, erro);
+                }
+
+                // Intervalo semiaberto [inicio, fim): cobre o dia inteiro
+                // sem depender de hora e sem sofrer com milissegundos.
+                where.data = { [Op.gte]: inicio, [Op.lt]: fim };
             }
+
+            // Pedido cancelado não é venda: fora do resumo e fora da listagem.
+            where.status = { [Op.ne]: 'cancelado' };
 
             const pag = parsePaginacao(req.query);
 

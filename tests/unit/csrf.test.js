@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { compararTokens } = require('../middleware/csrf');
+const { compararTokens } = require('../../middleware/csrf');
 
 test('tokens idênticos passam', () => {
     const token = 'a'.repeat(64);

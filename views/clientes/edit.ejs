@@ -8,29 +8,28 @@
     <%- include('../partials/csrf') %>
     <div class="form-group">
         <label for="nome">Nome</label>
-        <input type="text" class="form-control" id="nome" name="nome" value="<%= cliente.nome || '' %>" required>
+        <input type="text" class="form-control" id="nome" name="nome" value="<%= body && body.nome ? body.nome : (cliente.nome || '') %>" maxlength="255" required>
     </div>
     <div class="form-group">
         <label for="email">E-mail</label>
-        <input type="email" class="form-control" id="email" name="email" value="<%= cliente.email || '' %>" required>
-    </div>
-    <div class="form-group">
-        <label for="senha">Nova senha (deixe em branco para manter a atual)</label>
-        <input type="password" class="form-control" id="senha" name="senha" minlength="6">
+        <input type="email" class="form-control" id="email" name="email" value="<%= body && body.email ? body.email : (cliente.email || '') %>" required>
     </div>
     <div class="form-group">
         <label for="documento">Documento (CPF/CNPJ)</label>
-        <input type="text" class="form-control" id="documento" name="documento" value="<%= cliente.documento || '' %>" maxlength="20" required>
+        <input type="text" class="form-control" id="documento" name="documento" value="<%= body && body.documento ? body.documento : (cliente.documento || '') %>" maxlength="20" required>
     </div>
     <div class="form-group">
         <label for="telefone">Telefone</label>
-        <input type="text" class="form-control" id="telefone" name="telefone" value="<%= cliente.telefone || '' %>" maxlength="20">
+        <input type="text" class="form-control" id="telefone" name="telefone" value="<%= body && body.telefone !== undefined ? body.telefone : (cliente.telefone || '') %>" maxlength="20">
     </div>
     <div class="form-group">
         <label for="tipo">Tipo</label>
+        <%
+            const tipoAtual = body && body.tipo ? body.tipo : cliente.tipo;
+        %>
         <select class="form-control" id="tipo" name="tipo">
-            <option value="B2C" <%= cliente.tipo === 'B2C' ? 'selected' : '' %>>B2C (Pessoa física)</option>
-            <option value="B2B" <%= cliente.tipo === 'B2B' ? 'selected' : '' %>>B2B (Empresa)</option>
+            <option value="B2C" <%= tipoAtual === 'B2C' ? 'selected' : '' %>>B2C (Pessoa física)</option>
+            <option value="B2B" <%= tipoAtual === 'B2B' ? 'selected' : '' %>>B2B (Empresa)</option>
         </select>
     </div>
     <button type="submit" class="btn btn-warning">Salvar</button>

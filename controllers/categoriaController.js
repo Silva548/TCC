@@ -1,24 +1,36 @@
-const Categoria = require('../models/categoriaModel');
+const { Categoria } = require('../models');
 const { parsePaginacao, metadados } = require('../utils/paginacao');
+const { excedeTexto } = require('../utils/limites');
+
+// Validação compartilhada entre create e update, para os dois caminhos
+// recusarem o mesmo conjunto de entradas.
+const validarNome = (body) => {
+    const nome = (body.nome || '').trim();
+
+    const limite = excedeTexto('categoria', 'nome', nome);
+    if (limite) return { erro: limite };
+    if (!nome) return { erro: 'O nome da categoria é obrigatório' };
+
+    return { nome };
+};
 
 const categoriaController = {
     renderCreateForm: (req, res) => {
-        res.render('categorias/create', { erro: null });
+        res.render('categorias/create', { erro: null, body: null });
     },
 
     createCategoria: async (req, res, next) => {
         try {
-            const nome = (req.body.nome || '').trim();
-
-            if (!nome) {
-                return res.status(400).render('categorias/create', { erro: 'O nome da categoria é obrigatório' });
+            const { nome, erro } = validarNome(req.body);
+            if (erro) {
+                return res.status(400).render('categorias/create', { erro, body: req.body });
             }
 
             await Categoria.create({ nome });
             res.redirect('/categorias');
         } catch (err) {
             if (err.name === 'SequelizeUniqueConstraintError') {
-                return res.status(400).render('categorias/create', { erro: 'Já existe uma categoria com esse nome' });
+                return res.status(400).render('categorias/create', { erro: 'Já existe uma categoria com esse nome', body: req.body });
             }
             next(err);
         }
@@ -64,7 +76,7 @@ const categoriaController = {
                 return res.status(404).render('404');
             }
 
-            res.render('categorias/edit', { categoria, erro: null });
+            res.render('categorias/edit', { categoria, erro: null, body: null });
         } catch (err) {
             next(err);
         }
@@ -78,17 +90,23 @@ const categoriaController = {
                 return res.status(404).render('404');
             }
 
-            const nome = (req.body.nome || '').trim();
-
-            if (!nome) {
-                return res.status(400).render('categorias/edit', { categoria, erro: 'O nome da categoria é obrigatório' });
+            const { nome, erro } = validarNome(req.body);
+            if (erro) {
+                return res.status(400).render('categorias/edit', { categoria, erro, body: req.body });
             }
 
             await categoria.update({ nome });
             res.redirect('/categorias');
         } catch (err) {
             if (err.name === 'SequelizeUniqueConstraintError') {
-                return res.status(400).render('categorias/edit', { categoria: { id: req.params.id }, erro: 'Já existe uma categoria com esse nome' });
+                // Re-busca a entidade completa: renderizar apenas { id } faria o
+                // formulário voltar em branco
+                const atual = await Categoria.findByPk(req.params.id);
+                return res.status(400).render('categorias/edit', {
+                    categoria: atual || { id: req.params.id },
+                    erro: 'Já existe uma categoria com esse nome',
+                    body: req.body,
+                });
             }
             next(err);
         }
@@ -98,7 +116,14 @@ const categoriaController = {
         try {
             const categoria = await Categoria.findByPk(req.params.id);
             if (categoria) {
-                await categoria.destroy();
+                try {
+                    await categoria.destroy();
+                } catch (err) {
+                    if (err.name && err.name.includes('ForeignKeyConstraintError')) {
+                        return res.status(400).send('Não é possível excluir esta categoria: existem registros vinculados');
+                    }
+                    throw err;
+                }
             }
 
             res.redirect('/categorias');

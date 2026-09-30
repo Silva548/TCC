@@ -734,3 +734,85 @@ node seeds/seedDatabase.js
 *Documento atualizado em: 10 de agosto de 2026*  
 *Projeto: Rikelme/TCC*  
 *Desenvolvedor: Rikelme*
+
+---
+
+# 🔄 Atualização do Estado do Sistema
+
+**Data da atualização**: 27 de agosto de 2026
+
+Esta seção complementa o histórico acima. O conteúdo anterior foi preservado; os pontos abaixo refletem o estado verificado diretamente nos arquivos atuais do projeto.
+
+## Estado atual verificado
+
+- O banco utilizado é PostgreSQL com Sequelize 6 e `pg`.
+- O schema é controlado por seis migrations Sequelize, executadas com `npm run migrate`. O arquivo `models/index.js` apenas carrega os modelos e define associações; não há mais sincronização automática por `sync()`.
+- O sistema possui modelos Sequelize para clientes, produtos, categorias, usuários, pedidos e itens de pedido.
+- A aplicação principal já está integrada em `app.js` e inicia somente após autenticar no PostgreSQL.
+- As sessões são persistidas no PostgreSQL com `connect-pg-simple`, têm duração de duas horas e usam cookie `httpOnly`, `sameSite=lax` e `secure` em produção.
+- O login e logout estão implementados. Usuários possuem papéis, e o gerenciamento de usuários é restrito ao papel `admin`.
+- Produtos, categorias e clientes possuem CRUD com views EJS. Clientes também podem ser pesquisados por nome.
+- Pedidos são expostos como API JSON, com paginação e filtros por status/cliente. O relatório de vendas aceita filtros de data e retorna totais, quantidade de pedidos e valor médio.
+- A criação de pedidos usa transação e bloqueio pessimista dos produtos: valida cliente, forma de pagamento, itens, estoque e calcula o total em centavos antes de baixar o estoque.
+- Cancelar ou excluir um pedido não cancelado devolve as quantidades ao estoque. As transições de status são validadas pelas regras em `utils/pedidoRules.js`.
+- IDs de rotas são validados pelo middleware `middleware/validate.js`, e a paginação limita o tamanho máximo da página a 50 registros.
+
+## Segurança implementada
+
+- Senhas são armazenadas com hash `bcryptjs` e nunca são incluídas nas respostas de clientes ou pedidos.
+- Há proteção CSRF para métodos `POST`, `PUT`, `PATCH` e `DELETE`, com comparação em tempo constante.
+- Há `helmet`, rate limiting global e limite específico para tentativas de login.
+- CORS é same-origin por padrão e permite origens somente quando explicitamente configuradas em `CORS_ORIGINS`.
+- O login regenera a sessão para evitar session fixation e usa um hash dummy para reduzir enumeração de usuários por tempo de resposta.
+- Em produção, `SESSION_SECRET` é obrigatório; em desenvolvimento, um segredo temporário é gerado quando ausente.
+- O tratamento central de erros evita expor detalhes internos ao cliente.
+
+## Testes e validações atuais
+
+O comando `npm test` foi executado em 27 de agosto de 2026 com o resultado:
+
+```text
+31 testes aprovados
+0 testes falhos
+```
+
+A suíte cobre autenticação e autorização, CSRF, paginação, regras de transição de pedidos, cálculo de valores em centavos e validação de IDs. Ainda não há testes de integração que executem os controllers contra um PostgreSQL real.
+
+## Estrutura corrigida em relação ao registro anterior
+
+Os arquivos abaixo aparecem no histórico original, mas não estão presentes na estrutura atual:
+
+- `app-exemplo.js`
+- `models/produtoModel.js`
+- `controllers/produtoController.js`
+- `controllers/vendaController.js`
+- `routes/produtoRoutes.js`
+
+Os fluxos ativos usam `app.js`, `produtoSequelizeController.js`, `produtoSequelizeRoutes.js` e os modelos Sequelize. O arquivo `database_postgres.sql` permanece como referência SQL, mas o caminho recomendado para criação/evolução do schema é `npm run migrate`.
+
+## Dependências e comandos disponíveis
+
+O `package.json` atual inclui, além do Express, EJS e Sequelize, `bcryptjs`, `express-session`, `connect-pg-simple`, `helmet` e `express-rate-limit`. Os principais comandos são:
+
+```bash
+npm install
+npm run migrate
+npm run seed
+npm test
+npm run lint
+npm start
+npm run dev
+```
+
+O seed cria o usuário `admin`, categorias, clientes, produtos e um pedido de teste. Em desenvolvimento, a senha padrão do usuário criado é `admin123`; em produção, a senha é gerada aleatoriamente e exibida uma única vez no terminal. As credenciais devem ser alteradas ou protegidas antes de qualquer uso real.
+
+## Próximas etapas atualizadas
+
+1. Configurar um PostgreSQL acessível e preencher as variáveis do `.env`, incluindo `SESSION_SECRET`.
+2. Executar as migrations e, quando necessário, o seed.
+3. Validar manualmente os fluxos web de login, CRUD e autorização de administrador.
+4. Exercitar a API de pedidos com um banco PostgreSQL real, incluindo concorrência, cancelamento e devolução de estoque.
+5. Adicionar testes de integração dos controllers e das migrations.
+6. Revisar credenciais e configurações de produção antes do deploy.
+
+**Status atual**: ✅ Aplicação integrada e suíte unitária passando; configuração do PostgreSQL e validação de integração/deploy continuam como etapas operacionais.

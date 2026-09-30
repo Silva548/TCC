@@ -2,8 +2,15 @@
 const LIMITE_PADRAO = 20;
 const LIMITE_MAXIMO = 50;
 
+// Teto de páginas: sem ele, `?page=999999999` gera offset na casa das dezenas de
+// bilhões, o que vira varredura completa da tabela a cada requisição.
+const PAGINA_MAXIMA = 10000;
+
 const parsePaginacao = (query = {}) => {
-    const pagina = Math.max(1, parseInt(query.page, 10) || 1);
+    const pagina = Math.min(
+        PAGINA_MAXIMA,
+        Math.max(1, parseInt(query.page, 10) || 1)
+    );
     const limite = Math.min(LIMITE_MAXIMO, Math.max(1, parseInt(query.limit, 10) || LIMITE_PADRAO));
     return {
         pagina,
@@ -20,4 +27,4 @@ const metadados = ({ pagina, limite }, total) => ({
     total_paginas: Math.ceil(total / limite),
 });
 
-module.exports = { parsePaginacao, metadados };
+module.exports = { parsePaginacao, metadados, LIMITE_PADRAO, LIMITE_MAXIMO, PAGINA_MAXIMA };

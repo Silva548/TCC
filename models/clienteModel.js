@@ -16,10 +16,6 @@ const Cliente = sequelize.define('Cliente', {
         allowNull: false,
         unique: true,
     },
-    senha: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-    },
     documento: {
         type: DataTypes.STRING(20),
         allowNull: false,

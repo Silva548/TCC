@@ -6,6 +6,7 @@
 
 <form action="/login" method="POST">
     <%- include('partials/csrf') %>
+    <input type="hidden" name="next" value="<%= proximo %>">
     <div class="form-group">
         <label for="username">Usuário</label>
         <input type="text" class="form-control" id="username" name="username" required autofocus autocomplete="username">

@@ -2,11 +2,26 @@
 
 <a href="/produtos/new" class="btn btn-success mb-3">Novo Produto</a>
 
+<form method="GET" action="/produtos" class="form-inline mb-3">
+    <label for="categoria_id" class="mr-2">Filtrar por categoria:</label>
+    <select class="form-control mr-2" id="categoria_id" name="categoria_id">
+        <option value="">Todas</option>
+        <% categorias.forEach(categoria => { %>
+            <option value="<%= categoria.id %>" <%= String(categoriaFiltro) === String(categoria.id) ? 'selected' : '' %>><%= categoria.nome %></option>
+        <% }) %>
+    </select>
+    <button type="submit" class="btn btn-secondary">Filtrar</button>
+    <% if (categoriaFiltro) { %>
+        <a href="/produtos" class="btn btn-link">Limpar</a>
+    <% } %>
+</form>
+
 <table class="table">
     <thead>
         <tr>
             <th>ID</th>
             <th>Nome</th>
+            <th>Categoria</th>
             <th>Descrição</th>
             <th>Preço (R$)</th>
             <th>Peso (kg)</th>
@@ -19,6 +34,7 @@
             <tr>
                 <td><%= produto.id %></td>
                 <td><%= produto.nome %></td>
+                <td><%= produto.Categoria ? produto.Categoria.nome : 'Sem categoria' %></td>
                 <td><%= produto.descricao || '-' %></td>
                 <td><%= produto.preco %></td>
                 <td><%= produto.peso_kg %></td>

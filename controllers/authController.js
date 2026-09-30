@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
-const User = require('../models/userModel');
+const { User } = require('../models');
+const { caminhoSeguro } = require('../utils/redirect');
 
 // Hash dummy: garante tempo de resposta constante mesmo quando o usuário não existe,
 // impedindo enumeração de usuários por análise de tempo
@@ -20,7 +21,10 @@ const authController = {
 
         const erro = req.session.flashError || null;
         delete req.session.flashError;
-        res.render('login', { erro, csrfToken: req.session.csrfToken });
+        // `next` chega pela query de quem foi redirecionado para cá; caminho
+        //Seguro descarta o que não for um caminho interno
+        const proximo = caminhoSeguro(req.query.next, '');
+        res.render('login', { erro, csrfToken: req.session.csrfToken, proximo });
     },
 
     login: async (req, res, next) => {
@@ -40,9 +44,13 @@ const authController = {
                 return res.redirect('/login');
             }
 
-            // Regenera a sessão para prevenir session fixation,
-            // mantendo o token CSRF válido
+            // Regenera a sessão para prevenir session fixation.
+            // csrfToken precisa ser capturado ANTES do regenerate: ele destrói
+            // a sessão anterior e cria uma nova, então qualquer valor lido
+            // depois dela simplesmente não existe mais.
             const { csrfToken } = req.session;
+            const destino = caminhoSeguro(req.body.next, '/');
+
             req.session.regenerate((err) => {
                 if (err) {
                     return next(err);
@@ -52,8 +60,6 @@ const authController = {
                 req.session.username = user.username;
                 req.session.role = user.role;
 
-                const destino = req.session.returnTo || '/';
-                delete req.session.returnTo;
                 res.redirect(destino);
             });
         } catch (err) {
@@ -62,7 +68,13 @@ const authController = {
     },
 
     logout: (req, res) => {
-        req.session.destroy(() => res.redirect('/login'));
+        req.session.destroy((err) => {
+            if (err) {
+                console.error('[Erro] Falha ao destruir sessão:', err);
+            }
+            res.clearCookie('sessionId');
+            res.redirect('/login');
+        });
     },
 };
 

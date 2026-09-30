@@ -1,34 +1,32 @@
-const Cliente = require('../models/clienteModel');
-const bcrypt = require('bcryptjs');
+const { Cliente, Pedido } = require('../models');
 const { Op } = require('sequelize');
 const { parsePaginacao, metadados } = require('../utils/paginacao');
+const { excedeTexto } = require('../utils/limites');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TIPOS_VALIDOS = ['B2C', 'B2B'];
 
-const validarCliente = (body, { obrigarsSenha = false } = {}) => {
+const validarCliente = (body) => {
     const nome = (body.nome || '').trim();
     const email = (body.email || '').trim().toLowerCase();
     const documento = (body.documento || '').trim();
+    const telefone = (body.telefone || '').trim();
+
+    for (const campo of ['nome', 'email', 'documento', 'telefone']) {
+        const limite = excedeTexto('cliente', campo, { nome, email, documento, telefone }[campo]);
+        if (limite) return { erro: limite };
+    }
 
     if (!nome) return { erro: 'O nome é obrigatório' };
     if (!email || !EMAIL_REGEX.test(email)) return { erro: 'Informe um e-mail válido' };
     if (!documento) return { erro: 'O documento é obrigatório' };
-
-    if (obrigarsSenha && (!body.senha || body.senha.length < 6)) {
-        return { erro: 'A senha deve ter no mínimo 6 caracteres' };
-    }
-
-    if (body.senha && body.senha.length > 0 && body.senha.length < 6) {
-        return { erro: 'A nova senha deve ter no mínimo 6 caracteres' };
-    }
 
     return {
         dados: {
             nome,
             email,
             documento,
-            telefone: (body.telefone || '').trim() || null,
+            telefone: telefone || null,
             tipo: TIPOS_VALIDOS.includes(body.tipo) ? body.tipo : 'B2C',
         },
     };
@@ -38,20 +36,16 @@ const clienteController = {
 
     createCliente: async (req, res, next) => {
         try {
-            const { dados, erro } = validarCliente(req.body, { obrigarsSenha: true });
+            const { dados, erro } = validarCliente(req.body);
             if (erro) {
-                return res.status(400).render('clientes/create', { erro });
+                return res.status(400).render('clientes/create', { erro, body: req.body });
             }
 
-            await Cliente.create({
-                ...dados,
-                senha: await bcrypt.hash(req.body.senha, 10),
-            });
-
+            await Cliente.create(dados);
             res.redirect('/clientes');
         } catch (err) {
             if (err.name === 'SequelizeUniqueConstraintError') {
-                return res.status(400).render('clientes/create', { erro: 'E-mail ou documento já cadastrado' });
+                return res.status(400).render('clientes/create', { erro: 'E-mail ou documento já cadastrado', body: req.body });
             }
             next(err);
         }
@@ -60,7 +54,6 @@ const clienteController = {
     getClienteById: async (req, res, next) => {
         try {
             const cliente = await Cliente.findByPk(req.params.id, {
-                attributes: { exclude: ['senha'] },
             });
 
             if (!cliente) {
@@ -78,7 +71,6 @@ const clienteController = {
             const pag = parsePaginacao(req.query);
             const { rows: clientes, count } = await Cliente.findAndCountAll({
                 order: [['nome', 'ASC']],
-                attributes: { exclude: ['senha'] },
                 limit: pag.limite,
                 offset: pag.offset,
             });
@@ -93,20 +85,22 @@ const clienteController = {
     },
 
     renderCreateForm: (req, res) => {
-        res.render('clientes/create', { erro: null });
+        // `body` precisa existir: as views leem `body && body.campo` e o EJS
+        // compila com with(locals), então uma referência a `body` fora das
+        // locals cai no escopo global e lança ReferenceError (HTTP 500).
+        res.render('clientes/create', { erro: null, body: null });
     },
 
     renderEditForm: async (req, res, next) => {
         try {
             const cliente = await Cliente.findByPk(req.params.id, {
-                attributes: { exclude: ['senha'] },
             });
 
             if (!cliente) {
                 return res.status(404).render('404');
             }
 
-            res.render('clientes/edit', { cliente, erro: null });
+            res.render('clientes/edit', { cliente, erro: null, body: null });
         } catch (err) {
             next(err);
         }
@@ -123,19 +117,21 @@ const clienteController = {
 
             const { dados, erro } = validarCliente(req.body);
             if (erro) {
-                return res.status(400).render('clientes/edit', { cliente, erro });
-            }
-
-            // Só altera a senha se uma nova for informada
-            if (req.body.senha && req.body.senha.trim() !== '') {
-                dados.senha = await bcrypt.hash(req.body.senha, 10);
+                return res.status(400).render('clientes/edit', { cliente, erro, body: req.body });
             }
 
             await cliente.update(dados);
             res.redirect('/clientes');
         } catch (err) {
             if (err.name === 'SequelizeUniqueConstraintError') {
-                return res.status(400).render('clientes/edit', { cliente: { id: req.params.id }, erro: 'E-mail ou documento já cadastrado' });
+                // Re-busca a entidade completa: renderizar apenas { id } faria o
+                // formulário voltar em branco e apagar o que o usuário digitou
+                const atual = await Cliente.findByPk(req.params.id);
+                return res.status(400).render('clientes/edit', {
+                    cliente: atual || { id: req.params.id },
+                    erro: 'E-mail ou documento já cadastrado',
+                    body: req.body,
+                });
             }
             next(err);
         }
@@ -144,10 +140,18 @@ const clienteController = {
     deleteCliente: async (req, res, next) => {
         try {
             const cliente = await Cliente.findByPk(req.params.id);
-            if (cliente) {
-                await cliente.destroy();
+            if (!cliente) {
+                return res.status(404).render('404');
             }
 
+            const pedidos = await Pedido.count({ where: { cliente_id: cliente.id } });
+            if (pedidos > 0) {
+                return res.status(400).send(
+                    `Não é possível excluir este cliente: existem ${pedidos} pedido(s) vinculado(s). Cancele ou exclua os pedidos antes.`
+                );
+            }
+
+            await cliente.destroy();
             res.redirect('/clientes');
         } catch (err) {
             next(err);
@@ -162,16 +166,23 @@ const clienteController = {
                 return res.status(400).json({ error: 'Nome para busca é obrigatório' });
             }
 
-            const clientes = await Cliente.findAll({
+            const escaped = nome
+                .replace(/\\/g, '\\\\')
+                .replace(/%/g, '\\%')
+                .replace(/_/g, '\\_');
+
+            const pag = parsePaginacao(req.query);
+            const { rows: clientes, count } = await Cliente.findAndCountAll({
                 where: {
                     nome: {
-                        [Op.like]: `%${nome.replace(/[%_\\]/g, '')}%`,
+                        [Op.iLike]: `%${escaped}%`,
                     },
                 },
-                attributes: { exclude: ['senha'] },
+                limit: pag.limite,
+                offset: pag.offset,
             });
 
-            res.json(clientes);
+            res.json({ clientes, paginacao: metadados(pag, count) });
         } catch (err) {
             next(err);
         }

@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { parsePaginacao, metadados } = require('../utils/paginacao');
+const { parsePaginacao, metadados } = require('../../utils/paginacao');
 
 test('valores padrão quando nada é informado', () => {
     assert.deepEqual(parsePaginacao(), { pagina: 1, limite: 20, offset: 0 });

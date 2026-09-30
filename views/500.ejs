@@ -1,0 +1,14 @@
+<h1>500 - Erro interno</h1>
+<p>Ocorreu um erro inesperado ao processar sua requisição.</p>
+<% if (typeof erro !== 'undefined' && erro) { %>
+    <div class="alert alert-warning"><%= erro %></div>
+<% } %>
+<% if (typeof requestId !== 'undefined' && requestId) { %>
+    <p>Se o problema persistir, informe este identificador ao suporte &mdash; ele
+       aponta a linha exata no log do servidor:</p>
+    <p><code class="user-select-all"><%= requestId %></code></p>
+<% } else { %>
+    <p>Se o problema persistir, verifique os logs do servidor usando o
+       cabe&ccedil;alho <code>X-Request-Id</code> desta resposta.</p>
+<% } %>
+<a href="/" class="btn btn-primary">Voltar ao in&iacute;cio</a>

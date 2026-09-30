@@ -1,0 +1,130 @@
+<%
+    const { moeda, dataHora, rotuloStatus, rotuloPagamento, classeStatus } = formatadores;
+%>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Pedido #<%= pedido.id %></h1>
+    <a href="/pedidos" class="btn btn-link">← Voltar</a>
+</div>
+
+<% if (typeof aviso !== 'undefined' && aviso) { %>
+    <div class="alert alert-success"><%= aviso %></div>
+<% } %>
+<% if (typeof erro !== 'undefined' && erro) { %>
+    <div class="alert alert-danger"><%= erro %></div>
+<% } %>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header">Resumo</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-5">Data</dt>
+                    <dd class="col-7"><%= dataHora(pedido.data) %></dd>
+
+                    <dt class="col-5">Cliente</dt>
+                    <dd class="col-7">
+                        <%= pedido.Cliente ? pedido.Cliente.nome : '-' %>
+                        <% if (pedido.Cliente) { %>
+                            <a href="/clientes/<%= pedido.Cliente.id %>" class="small">ver cadastro</a>
+                        <% } %>
+                    </dd>
+
+                    <dt class="col-5">Pagamento</dt>
+                    <dd class="col-7"><%= rotuloPagamento(pedido.forma_pagamento) %></dd>
+
+                    <dt class="col-5">Status</dt>
+                    <dd class="col-7">
+                        <span class="badge <%= classeStatus(pedido.status) %>">
+                            <%= rotuloStatus(pedido.status) %>
+                        </span>
+                    </dd>
+
+                    <dt class="col-5">Total</dt>
+                    <dd class="col-7"><strong><%= moeda(pedido.valor_total) %></strong></dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Itens</div>
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th class="text-right">Qtd.</th>
+                            <th class="text-right">Unitário</th>
+                            <th class="text-right">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% itens.forEach(item => { %>
+                            <tr>
+                                <td><%= item.Produto ? item.Produto.nome : ('Produto ' + item.produto_id) %></td>
+                                <td class="text-right"><%= item.quantidade %></td>
+                                <td class="text-right"><%= moeda(item.preco_unitario) %></td>
+                                <td class="text-right">
+                                    <%= moeda(Number(item.preco_unitario) * Number(item.quantidade)) %>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th colspan="3" class="text-right">Total</th>
+                            <th class="text-right"><%= moeda(pedido.valor_total) %></th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<hr>
+
+<div class="row">
+    <div class="col-md-7">
+        <h2 class="h5">Alterar status</h2>
+        <% if (proximosStatus.length) { %>
+            <p class="text-muted small">
+                Cancelar devolve os itens ao estoque. Não é possível desfazer o cancelamento.
+            </p>
+            <% proximosStatus.forEach(alvo => { %>
+                <form action="/pedidos/<%= pedido.id %>/status?_method=PUT" method="POST" class="form-inline mb-2 mr-2">
+                    <%- include('../partials/csrf') %>
+                    <input type="hidden" name="status" value="<%= alvo %>">
+                    <button type="submit"
+                        class="btn btn-sm <%= alvo === 'cancelado' ? 'btn-outline-danger' : 'btn-outline-primary' %>">
+                        Marcar como <%= rotuloStatus(alvo) %>
+                    </button>
+                </form>
+            <% }) %>
+        <% } else { %>
+            <p class="text-muted">
+                Este pedido está em <strong><%= rotuloStatus(pedido.status) %></strong>, um
+                estado final: não há mais transições disponíveis.
+            </p>
+        <% } %>
+    </div>
+
+    <div class="col-md-5">
+        <h2 class="h5">Excluir</h2>
+        <p class="text-muted small">
+            Exclui o pedido e devolve os itens ao estoque. A ação não pode ser desfeita.
+        </p>
+        <%# Sem onsubmit="confirm(...)": a CSP não permite script inline
+            (scriptSrc sem 'unsafe-inline'), então o handler seria bloqueado e a
+            exclusão aconteceria sem o pedido de confirmação. %>
+        <form action="/pedidos/<%= pedido.id %>?_method=DELETE" method="POST">
+            <%- include('../partials/csrf') %>
+            <button type="submit" class="btn btn-outline-danger">
+                Excluir pedido #<%= pedido.id %> definitivamente
+            </button>
+        </form>
+    </div>
+</div>

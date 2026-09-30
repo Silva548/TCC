@@ -6,7 +6,7 @@ const {
     transicaoValida,
     paraCentavos,
     calcularTotalCentavos,
-} = require('../utils/pedidoRules');
+} = require('../../utils/pedidoRules');
 
 test('status válidos cobrem todas as chaves das transições', () => {
     for (const status of STATUS_VALIDOS) {
@@ -43,14 +43,39 @@ test('calcularTotalCentavos soma quantidade x preço sem perda de precisão', ()
         { produto_id: 1, quantidade: 3 },
         { produto_id: 2, quantidade: 2 },
     ];
-    const produtos = [
-        { preco: '19.99' }, // 5997
-        { preco: '0.1' },   // 20
-    ];
+    // Indexado por produto_id, não por posição
+    const produtos = new Map([
+        [1, { preco: '19.99' }], // 3 x 1999 = 5997
+        [2, { preco: '0.1' }],   // 2 x   10 =   20
+    ]);
 
     assert.equal(calcularTotalCentavos(itens, produtos), 6017);
 });
 
+test('calcularTotalCentavos não confunde itens quando a ordem dos produtos difere', () => {
+    // Regressão do estoque negativo: a agregação por produto muda o tamanho do
+    // array, então qualquer alinhamento posicional passaria a associar a
+    // quantidade ao preço do produto errado.
+    const itens = [
+        { produto_id: 7, quantidade: 2 },
+        { produto_id: 9, quantidade: 5 },
+    ];
+    const produtos = new Map([
+        [9, { preco: '10.00' }],
+        [7, { preco: '3.00' }],
+    ]);
+
+    // 2 x 300 + 5 x 1000 = 5600
+    assert.equal(calcularTotalCentavos(itens, produtos), 5600);
+});
+
+test('calcularTotalCentavos soma a mesma linha repetida', () => {
+    const itens = [{ produto_id: 1, quantidade: 10 }];
+    const produtos = new Map([[1, { preco: '2.50' }]]);
+
+    assert.equal(calcularTotalCentavos(itens, produtos), 2500);
+});
+
 test('pedido vazio totaliza zero', () => {
-    assert.equal(calcularTotalCentavos([], []), 0);
+    assert.equal(calcularTotalCentavos([], new Map()), 0);
 });
