@@ -51,4 +51,36 @@ const erro = (res, req, status, mensagem) => {
     return res.status(status).send(mensagem);
 };
 
-module.exports = { ehRotaJson, citaHtml, citaJson, ehJson, erro, ROTAS_JSON };
+// Redireciona para uma listagem levando uma mensagem de erro.
+//
+// Os deletes de cliente, produto e categoria usavam res.status(400).send(texto),
+// que no navegador abre uma página de texto puro no meio da interface. Levar a
+// mensagem na query devolve o usuário à lista, que a mostra num alert.
+//
+// A mensagem é gerada pelo servidor e escapada por encodeURIComponent; a view
+// a imprime com <%= %>, que escapa de novo — não há XSS. Omitir um mapa de
+// textos fixos aqui é deliberado: a alternativa seria um middleware de flash
+// (com sessão) para mensagens que são sempre diferentes.
+const redirecionarComErro = (res, caminho, mensagem) => {
+    const separador = caminho.includes('?') ? '&' : '?';
+    return res.redirect(`${caminho}${separador}erro=${encodeURIComponent(mensagem)}`);
+};
+
+// Lê a mensagem de erro que redirecionarComErro deixou na query. Devolve null
+// quando não há mensagem, para a view poder testar com typeof/&& sem checar
+// a query inteira.
+const erroDaUrl = (req) => {
+    const valor = req && req.query && req.query.erro;
+    return typeof valor === 'string' && valor ? valor : null;
+};
+
+module.exports = {
+    ehRotaJson,
+    citaHtml,
+    citaJson,
+    ehJson,
+    erro,
+    redirecionarComErro,
+    erroDaUrl,
+    ROTAS_JSON,
+};

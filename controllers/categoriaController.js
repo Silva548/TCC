@@ -1,6 +1,8 @@
 const { Categoria } = require('../models');
 const { parsePaginacao, metadados } = require('../utils/paginacao');
 const { excedeTexto } = require('../utils/limites');
+const { redirecionarComErro, erroDaUrl } = require('../utils/responder');
+const { ehViolacaoDeChaveEstrangeira } = require('../utils/dbErros');
 
 // Validação compartilhada entre create e update, para os dois caminhos
 // recusarem o mesmo conjunto de entradas.
@@ -48,6 +50,7 @@ const categoriaController = {
             res.render('categorias/index', {
                 categorias,
                 paginacao: metadados(pag, count),
+                erro: erroDaUrl(req),
             });
         } catch (err) {
             next(err);
@@ -119,8 +122,12 @@ const categoriaController = {
                 try {
                     await categoria.destroy();
                 } catch (err) {
-                    if (err.name && err.name.includes('ForeignKeyConstraintError')) {
-                        return res.status(400).send('Não é possível excluir esta categoria: existem registros vinculados');
+                    if (ehViolacaoDeChaveEstrangeira(err)) {
+                        return redirecionarComErro(
+                            res,
+                            '/categorias',
+                            'Não é possível excluir esta categoria: existem produtos vinculados. Altere a categoria dos produtos antes.'
+                        );
                     }
                     throw err;
                 }

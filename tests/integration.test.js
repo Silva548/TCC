@@ -742,12 +742,21 @@ test('cliente com pedidos não pode ser excluído (RESTRICT no banco)', async (t
         headers: { Accept: 'text/html' },
         body: { _csrf: csrf },
     });
-    assert.equal(res.status, 400, 'o controller deveria recusar');
+    // O controller recusa antes de chegar no banco e devolve o usuário à
+    // listagem com a mensagem, em vez de uma página de texto puro.
+    assert.equal(res.status, 302);
+    assert.match(res.headers.get('location'), /^\/clientes\?erro=/);
 
     // E o banco também: a FK é RESTRICT desde a 20260930000002
     await assert.rejects(
         () => Cliente.destroy({ where: { id: alvo.id } }),
-        /foreign key/i,
+        // O erro do Postgres é 23001 (restrict_violation), embrulhado em
+        // SequelizeDatabaseError — não sai como "foreign key" no nome, e sim
+        // na mensagem do erro interno.
+        (err) => {
+            const codigo = err.original?.code || err.parent?.code;
+            return codigo === '23001' || /RESTRICT setting/.test(err.parent?.message || err.message);
+        },
         'a FK deveria impedir a exclusão em cascata'
     );
 
@@ -1284,4 +1293,173 @@ test('relatório com período exato filtra por data', async (t) => {
         await produto.destroy();
         await alvo.destroy();
     }
+});
+
+// ---------------------------------------------------------------------------
+// Exclusão bloqueada por FK: volta para a listagem com a mensagem, em vez de
+// devolver texto puro no meio da interface
+// ---------------------------------------------------------------------------
+
+test('excluir cliente com pedidos volta à lista com a mensagem de erro', async (t) => {
+    if (pular()) return t.skip('banco de testes indisponível');
+
+    const { produto, cliente: alvo, Pedido } = await cenarioPedido('fk-cliente');
+    let pedidoId;
+
+    try {
+        const nav = criarCliente(baseUrl);
+        await fazerLogin(nav);
+        const csrf = await extrairCsrf(nav, '/pedidos/new');
+
+        const criado = await nav('/pedidos', navegador({
+            method: 'POST',
+            body: [
+                ['_csrf', csrf],
+                ['cliente_id', String(alvo.id)],
+                ['forma_pagamento', 'pix'],
+                ['item_produto_id[]', String(produto.id)],
+                ['item_quantidade[]', '1'],
+            ],
+        }));
+        pedidoId = Number(criado.headers.get('location').match(/\/pedidos\/(\d+)/)[1]);
+
+        const res = await nav(`/clientes/${alvo.id}?_method=DELETE`, navegador({
+            method: 'POST',
+            body: { _csrf: csrf },
+        }));
+
+        assert.equal(res.status, 302, 'deveria redirecionar, não responder texto puro');
+        const destino = res.headers.get('location');
+        assert.match(destino, /^\/clientes\?erro=/);
+
+        // A mensagem diz que é preciso EXCLUIR os pedidos: cancelar não resolve,
+        // porque o cancelamento não remove o vínculo com o cliente.
+        const aviso = decodeURIComponent(destino.split('erro=')[1]);
+        assert.match(aviso, /excluir/i);
+        assert.match(aviso, /cancel[aá]?-?l?os? não basta/i);
+
+        // E a listagem mostra a mensagem num alert, escapada
+        const lista = await nav(destino, navegador({}));
+        assert.equal(lista.status, 200);
+        const html = await lista.text();
+        assert.match(html, /alert-danger/);
+        assert.match(html, /cancel[aá]?-?l?os? não basta/i);
+    } finally {
+        if (pedidoId) await Pedido.destroy({ where: { id: pedidoId } });
+        await produto.destroy();
+        await alvo.destroy();
+    }
+});
+
+test('excluir categoria com produtos volta à lista com a mensagem', async (t) => {
+    if (pular()) return t.skip('banco de testes indisponível');
+
+    const nav = criarCliente(baseUrl);
+    await fazerLogin(nav);
+    const csrf = await extrairCsrf(nav, '/produtos');
+
+    const { Categoria, Produto } = require('../models');
+    const categoria = await Categoria.create({ nome: `Cat ${Date.now()}` });
+    const produto = await Produto.create({
+        nome: `Prod cat ${Date.now()}`, preco: 10, peso_kg: 1, estoque: 5, categoria_id: categoria.id,
+    });
+
+    try {
+        const res = await nav(`/categorias/${categoria.id}?_method=DELETE`, navegador({
+            method: 'POST',
+            body: { _csrf: csrf },
+        }));
+
+        assert.equal(res.status, 302);
+        const destino = res.headers.get('location');
+        assert.match(destino, /^\/categorias\?erro=/);
+        assert.match(decodeURIComponent(destino.split('erro=')[1]), /produtos vinculados/i);
+
+        const lista = await nav(destino, navegador({}));
+        assert.match(await lista.text(), /alert-danger/);
+    } finally {
+        await produto.destroy();
+        await categoria.destroy();
+    }
+});
+
+test('excluir produto com pedidos volta à lista com a mensagem', async (t) => {
+    if (pular()) return t.skip('banco de testes indisponível');
+
+    const { produto, cliente: alvo, Pedido } = await cenarioPedido('fk-produto');
+    let pedidoId;
+
+    try {
+        const nav = criarCliente(baseUrl);
+        await fazerLogin(nav);
+        const csrf = await extrairCsrf(nav, '/pedidos/new');
+
+        const criado = await nav('/pedidos', navegador({
+            method: 'POST',
+            body: [
+                ['_csrf', csrf],
+                ['cliente_id', String(alvo.id)],
+                ['forma_pagamento', 'pix'],
+                ['item_produto_id[]', String(produto.id)],
+                ['item_quantidade[]', '1'],
+            ],
+        }));
+        pedidoId = Number(criado.headers.get('location').match(/\/pedidos\/(\d+)/)[1]);
+
+        const res = await nav(`/produtos/${produto.id}?_method=DELETE`, navegador({
+            method: 'POST',
+            body: { _csrf: csrf },
+        }));
+
+        assert.equal(res.status, 302);
+        assert.match(res.headers.get('location'), /^\/produtos\?erro=/);
+        assert.match(decodeURIComponent(res.headers.get('location').split('erro=')[1]), /pedidos registrados/i);
+    } finally {
+        if (pedidoId) await Pedido.destroy({ where: { id: pedidoId } });
+        await produto.destroy();
+        await alvo.destroy();
+    }
+});
+
+test('a mensagem de erro na query é escapada, não interpretada como HTML', async (t) => {
+    if (pular()) return t.skip('banco de testes indisponível');
+
+    const nav = criarCliente(baseUrl);
+    await fazerLogin(nav);
+
+    // Injeção direta na query: se a view usasse <%- %>, o script entraria no
+    // HTML. O <%= %> tem que escapar.
+    const res = await nav('/clientes?erro=' + encodeURIComponent('<script>alert(1)</script>'), navegador({}));
+    assert.equal(res.status, 200);
+    const html = await res.text();
+
+    assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/, 'o HTML não pode conter a tag crua');
+    assert.match(html, /&lt;script&gt;/, 'o texto deve aparecer escapado');
+});
+
+test('produto com categoria_id inexistente devolve o formulário com erro, não 500', async (t) => {
+    if (pular()) return t.skip('banco de testes indisponível');
+
+    const nav = criarCliente(baseUrl);
+    await fazerLogin(nav);
+    const csrf = await extrairCsrf(nav, '/produtos/new');
+
+    // categoria_id que não existe: o banco recusa o INSERT com 23503. A
+    // checagem pelo nome da classe Sequel nunca casava, então isso virava 500.
+    const res = await nav('/produtos', navegador({
+        method: 'POST',
+        body: [
+            ['_csrf', csrf],
+            ['nome', 'Produto sem categoria'],
+            ['preco', '10,00'],
+            ['peso_kg', '1'],
+            ['estoque', '3'],
+            ['categoria_id', '999999'],
+        ],
+    }));
+
+    assert.equal(res.status, 400, `esperava 400, veio ${res.status}`);
+    const html = await res.text();
+    assert.match(html, /categoria informada não existe/i);
+    assert.doesNotMatch(html, /Erro interno/, 'não pode cair na página de 500');
 });

@@ -1,5 +1,11 @@
 <h1>Lista de produtos</h1>
 
+<%# Mensagem de erro trazida pelo controller após uma recusa (ex.: exclusão
+    bloqueada por FK). Vem na query porque o app não tem sessão de flash. %>
+<% if (typeof erro !== 'undefined' && erro) { %>
+    <div class="alert alert-danger"><%= erro %></div>
+<% } %>
+
 <a href="/produtos/new" class="btn btn-success mb-3">Novo Produto</a>
 
 <form method="GET" action="/produtos" class="form-inline mb-3">

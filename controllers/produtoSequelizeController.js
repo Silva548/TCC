@@ -1,6 +1,8 @@
 const { Produto, Categoria } = require('../models');
 const { parsePaginacao, metadados } = require('../utils/paginacao');
 const { excedeTexto, excedeDecimal } = require('../utils/limites');
+const { redirecionarComErro, erroDaUrl } = require('../utils/responder');
+const { ehViolacaoDeChaveEstrangeira } = require('../utils/dbErros');
 
 const validarProduto = (body) => {
     const nome = (body.nome || '').trim();
@@ -57,7 +59,7 @@ const produtoController = {
             await Produto.create(dados);
             res.redirect('/produtos');
         } catch (err) {
-            if (err.name === 'SequelizeForeignKeyConstraintError') {
+            if (ehViolacaoDeChaveEstrangeira(err)) {
                 const categorias = await listarCategorias();
                 return res.status(400).render('produtos/create', {
                     erro: 'A categoria informada não existe',
@@ -114,6 +116,7 @@ const produtoController = {
                 categorias,
                 categoriaFiltro: req.query.categoria_id || '',
                 paginacao: metadados(pag, count),
+                erro: erroDaUrl(req),
             });
         } catch (err) {
             next(err);
@@ -175,7 +178,7 @@ const produtoController = {
             await produto.update(dados);
             res.redirect('/produtos');
         } catch (err) {
-            if (err.name === 'SequelizeForeignKeyConstraintError') {
+            if (ehViolacaoDeChaveEstrangeira(err)) {
                 const atual = produto || await Produto.findByPk(req.params.id);
                 return res.status(400).render('produtos/edit', {
                     produto: atual,
@@ -196,8 +199,12 @@ const produtoController = {
                     await produto.destroy();
                 } catch (err) {
                     // FK RESTRICT: produto com histórico de pedidos não pode ser excluído
-                    if (err.name && err.name.includes('ForeignKeyConstraintError')) {
-                        return res.status(400).send('Não é possível excluir um produto que possui pedidos registrados');
+                    if (ehViolacaoDeChaveEstrangeira(err)) {
+                        return redirecionarComErro(
+                            res,
+                            '/produtos',
+                            'Não é possível excluir um produto que possui pedidos registrados'
+                        );
                     }
                     throw err;
                 }

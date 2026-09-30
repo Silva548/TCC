@@ -10,6 +10,7 @@ const { Op } = require('sequelize');
 // e é usada pelas views; o controller não precisa dela.
 const { STATUS_VALIDOS, FORMAS_PAGAMENTO, TRANSICOES_STATUS } = require('../utils/pedidoRules');
 const { parsePaginacao, metadados } = require('../utils/paginacao');
+const { erroDaUrl } = require('../utils/responder');
 const { criarPedido, mudarStatus, excluirPedido, normalizarItens, itensDoFormulario } = require('../services/pedidoService');
 
 // Linhas fixas do formulário: o usuário preenche só o que precisa, sem
@@ -48,8 +49,6 @@ const AVISOS = {
 };
 
 const avisoDaUrl = (req) => AVISOS[req.query.msg] || null;
-
-const erroDaUrl = (req) => (typeof req.query.erro === 'string' && req.query.erro ? req.query.erro : null);
 
 const pedidoViewController = {
 

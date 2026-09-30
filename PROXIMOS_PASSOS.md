@@ -86,8 +86,33 @@ está no código e coberto por teste.
   status, excluir) deixou de estar no controller e passou a ser uma única
   implementação usada pela API e pela web — a duplicação já tinha custado um
   bug de estoque.
-- **Testes**: 113 no total, incluindo 12 da UI de pedidos e o contrato
-  HTML/JSON no mesmo path.
+- **Testes**: 126 no total, incluindo a UI de pedidos, o contrato
+  HTML/JSON no mesmo path e as recusas de exclusão por FK.
+
+## Correção de 30/09/2026 — recusa de exclusão por FK
+
+O tratamento de violação de chave estrangeira nos controllers de cliente,
+produto e categoria testava `err.name.includes('ForeignKeyConstraintError')`.
+Essa classe só é lançada pelos validadores do próprio Sequelize; a recusa que
+interessa aqui vem do **PostgreSQL**, que responde `23001` (`restrict_violation`)
+embrulhada em `SequelizeDatabaseError`. O nome nunca casava, então o tratamento
+era código morto e as três exclusões bloqueadas terminavam em 500 — inclusive a
+"categoria informada não existe" ao salvar um produto com `categoria_id`
+inexistente, que era onde a tela mais precisava da mensagem.
+
+- `utils/dbErros.js` identifica a violação pelo SQLSTATE (`23001` e `23503`),
+  aceitando o erro em `original` ou `parent` e ainda a classe do Sequelize.
+- As recusas voltaram para a listagem com a mensagem num `alert`, em vez de
+  `res.status(400).send(texto)`, que no navegador abria uma página de texto puro
+  no meio da interface.
+- A mensagem de cliente passou a dizer que é preciso **excluir** os pedidos:
+  cancelá-los não libera a exclusão, porque o pedido continua apontando para o
+  cliente.
+- A contagem de pedidos e o `destroy` não são atômicos; um pedido criado entre
+  os dois agora devolve a mesma mensagem em vez de 500.
+- Coberto por 6 testes de `dbErros` e 5 de integração, incluindo um que injeta
+  `<script>` na query para confirmar que a mensagem é escapada.
+
 
 ## Fora do escopo (decisões consciente)
 

@@ -2,6 +2,8 @@ const { Cliente, Pedido } = require('../models');
 const { Op } = require('sequelize');
 const { parsePaginacao, metadados } = require('../utils/paginacao');
 const { excedeTexto } = require('../utils/limites');
+const { redirecionarComErro, erroDaUrl } = require('../utils/responder');
+const { ehViolacaoDeChaveEstrangeira } = require('../utils/dbErros');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TIPOS_VALIDOS = ['B2C', 'B2B'];
@@ -78,6 +80,7 @@ const clienteController = {
             res.render('clientes/index', {
                 clientes,
                 paginacao: metadados(pag, count),
+                erro: erroDaUrl(req),
             });
         } catch (err) {
             next(err);
@@ -146,12 +149,29 @@ const clienteController = {
 
             const pedidos = await Pedido.count({ where: { cliente_id: cliente.id } });
             if (pedidos > 0) {
-                return res.status(400).send(
-                    `Não é possível excluir este cliente: existem ${pedidos} pedido(s) vinculado(s). Cancele ou exclua os pedidos antes.`
+                return redirecionarComErro(
+                    res,
+                    '/clientes',
+                    `Não é possível excluir ${cliente.nome}: existem ${pedidos} pedido(s) vinculados. Exclua os pedidos antes — cancelá-los não basta, porque o pedido continua apontando para o cliente.`
                 );
             }
 
-            await cliente.destroy();
+            try {
+                await cliente.destroy();
+            } catch (err) {
+                // A contagem acima e o destroy não são atômicos: um pedido
+                // criado entre os dois faz o banco recusar o DELETE. Sem este
+                // tratamento, essa corrida vira 500 em vez do mesmo 400.
+                if (ehViolacaoDeChaveEstrangeira(err)) {
+                    return redirecionarComErro(
+                        res,
+                        '/clientes',
+                        `Não é possível excluir ${cliente.nome}: um pedido foi vinculado enquanto a exclusão era processada. Exclua os pedidos antes.`
+                    );
+                }
+                throw err;
+            }
+
             res.redirect('/clientes');
         } catch (err) {
             next(err);
